@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  grid.nod.xml — Node definitions for the LifeLane 2x2 mock grid.
+
+  Layout (approximate coordinates in metres, origin at J1):
+      J1 (0, 300) ---- J2 (300, 300)
+      |                |
+      J3 (0,   0) ---- J4 (300,   0) ---- H1 (350, 0)
+
+  All four junctions are signalized (type="traffic_light").
+  H1 is the hospital stub (priority junction).
+
+  *** SIMULATION ONLY — never connected to real traffic infrastructure ***
+-->
+<nodes>
+    <!-- 2x2 signalized grid junctions -->
+    <node id="J1" x="0"   y="300" type="traffic_light"/>
+    <node id="J2" x="300" y="300" type="traffic_light"/>
+    <node id="J3" x="0"   y="0"   type="traffic_light"/>
+    <node id="J4" x="300" y="0"   type="traffic_light"/>
+
+    <!-- Hospital stub — priority (no signal delay) -->
+    <node id="H1" x="350" y="0"   type="priority"/>
+</nodes>
+

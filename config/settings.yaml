@@ -1,0 +1,136 @@
+# LifeLane configuration
+# Central settings file — all tuneable parameters live here.
+# Paths are relative to the project root unless noted otherwise.
+
+# --- Audio preprocessing (Phase 4) ---
+audio:
+  sample_rate_hz: 16000
+  min_samples: 15360          # 0.96 s @ 16 kHz — minimum YAMNet input length
+  yamnet_url: "https://tfhub.dev/google/yamnet/1"
+  window_duration_s: 0.96
+  features_path: "data/processed/features.npz"
+  failures_csv: "data/processed/preprocessing_failures.csv"
+  manifest_csv: "data/processed/manifest.csv"
+  embedding_cache_dir: "data/processed/embeddings"
+  # Karachi Emergency Sirens — extracted from urbansound_karachi.zip (replaces UrbanSound8K)
+  #   ambulance/ -> SIREN=1  |  road_noise/ -> NON-SIREN=0
+  karachi_audio_dir: "data/raw/karachi"
+  karachi_archive: "urbansound_karachi.zip"
+  # SireNNet — extracted from sireNNet zip
+  sirenet_audio_dir: "data/raw/sireNNet"
+  # Raw archives (do not move or delete)
+  sirenet_archive: "sireNNet-Emergency Vehicle Siren Classification Dataset For Urban Applications.zip"
+  # UrbanSound8K (kept on disk but NOT used — replaced by Karachi dataset 2026-11-11)
+  urbansound8k_metadata: "data/raw/UrbanSound8K/metadata/UrbanSound8K.csv"
+  urbansound8k_audio_dir: "data/raw/UrbanSound8K/audio"
+  urbansound8k_archive: "UrbanSound8K.tar.gz"
+
+# --- Label mapping (approved 2026-11-11) ---
+# SireNNet:  ambulance -> SIREN=1; firetruck/police/traffic -> NON-SIREN=0
+# Karachi:   ambulance/ -> SIREN=1; road_noise/ -> NON-SIREN=0
+# US8K:      NOT USED (retained for reference only)
+audio_labels:
+  sirenet_siren_classes: ["ambulance"]
+  sirenet_nonsiren_classes: ["firetruck", "police", "traffic"]
+  karachi_siren_dir: "ambulance"
+  karachi_nonsiren_dir: "road_noise"
+
+# --- Siren classifier (Phase 4) ---
+classifier:
+  baseline_threshold: 0.5
+  selected_threshold: 0.600    # selected on validation set 2026-11-11 (real data)
+  train_folds: [1, 2, 3, 4, 5, 6, 7, 8]
+  val_fold: 9
+  test_fold: 10
+  model_path: "models/siren_classifier.joblib"
+  scaler_path: "models/siren_scaler.joblib"
+  threshold_path: "models/siren_scaler_threshold.txt"
+
+# --- Approach selector / audio trigger ---
+approach_selector:
+  confirmation_windows: 3      # consecutive positive windows required
+  cooldown_s: 30               # seconds before same approach can trigger again
+  max_activations_per_hour: 4  # rate limit per junction/approach
+  audio_only_trigger_mode: false  # experimental; default requires authorized request
+
+# --- Ambulance request ---
+ambulance_request:
+  default_expiry_s: 300        # seconds until a request expires
+  max_service_duration_s: 120  # max green-priority hold at one junction
+
+# --- SUMO simulation (Phase 3) ---
+sumo:
+  sumo_binary: "sumo"          # or "sumo-gui" for visual runs
+  config_file: "sumo/network/grid.sumocfg"
+  step_length_s: 1.0
+  log_interval_s: 1.0
+  demand_levels:
+    light: 0.3
+    medium: 0.6
+    heavy: 1.0
+  ambulance_vehicle_type: "ambulance"
+  ambulance_vehicle_id_prefix: "ambulance_"
+
+# --- ETA / queue prediction (Phase 5) ---
+prediction:
+  eta_dataset_path: "data/sumo_logs/eta_dataset.csv"
+  queue_dataset_path: "data/sumo_logs/queue_dataset.csv"
+  eta_model_path: "models/eta_model.joblib"
+  queue_model_path: "models/queue_model.joblib"
+  train_seeds: [1, 70]         # inclusive range [start, end]
+  val_seeds: [71, 85]
+  test_seeds: [86, 100]
+
+# --- Corridor preparation (Phase 5) ---
+corridor:
+  safety_margin_s: 5.0
+  safe_transition_time_s: 6.0  # yellow + all-red duration
+
+# --- Safety controller ---
+safety_controller:
+  yellow_duration_s: 3.0
+  all_red_duration_s: 3.0
+  min_green_s: 7.0
+  max_green_s: 60.0
+  pedestrian_clearance_s: 5.0
+
+# --- Recovery (Phase 2+) ---
+recovery:
+  max_delay_service_s: 60.0    # max extra green for delayed movements
+  max_recovery_duration_s: 120.0
+
+# --- Dispatch / Ambulance Identity (Phase 2) ---
+dispatch:
+  verification_timeout_s: 60.0          # Decision 1A: 60s configurable timeout
+  request_expiry_s: 300.0               # Emergency request TTL
+  session_ttl_s: 3600.0                 # Authenticated session TTL
+  gps_stale_threshold_s: 10.0           # Seconds before GPS marked stale
+  gps_max_history: 50                   # Rolling GPS update window
+  deviation_corridor_m: 30.0            # Metres before route deviation alert
+  temp_verification_expiry_s: 180.0     # Temp verification record TTL
+  valid_operator_tokens:                # Decision 6A: approved dispatch tokens
+    - "SIM-DISPATCH-001"
+    - "SIM-DISPATCH-002"
+  # GPS_MANUAL accepted for unregistered ambulances (Decision 2A)
+  accept_manual_location: true
+  # Equal priority for registered and temp-verified (Decision 3A)
+  registered_priority_boost: false
+  # Accept request even if hospital unavailable (Decision 4A)
+  accept_unavailable_hospital: true
+
+# --- Logging ---
+logging:
+  log_dir: "reports/logs"
+  structured_log_path: "reports/logs/events.jsonl"
+  level: "INFO"
+
+# --- Experiments (Phase 6) ---
+experiments:
+  seeds: [1, 2, 3, 4, 5]
+  demand_levels: ["light", "medium", "heavy"]
+  strategies:
+    - "baseline"
+    - "fixed_formula"
+    - "naive_eta"
+    - "learned_eta"
+

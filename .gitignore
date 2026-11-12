@@ -1,0 +1,54 @@
+# LifeLane .gitignore
+# Generated data — never commit
+data/raw/
+data/processed/
+data/sumo_logs/
+models/
+reports/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+.env
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SUMO output
+*.xml.gz
+sumo_output/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Secrets / env files
+.env
+*.env.local
+
+
+*.zip

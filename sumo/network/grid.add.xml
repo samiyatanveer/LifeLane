@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  grid.add.xml — Additional detectors and output for the LifeLane mock network.
+
+  E2 (area) detectors are placed on each ambulance approach edge to:
+    - Count queued vehicles (for queue-clearance estimation)
+    - Detect ambulance presence on approach
+    - Feed data into the ETA/queue dataset builder (Phase 5)
+
+  Output files go to reports/sumo_output/ (relative to project root).
+
+  *** SIMULATION ONLY — never connected to real traffic infrastructure ***
+-->
+<additional>
+
+    <!-- ── Ambulance approach detectors ─────────────────────────────── -->
+
+    <!-- Approach to J1 from north (Route A entry point) -->
+    <e2Detector id="det_J1_north"
+                lane="e_J1_J2_0"
+                pos="0"
+                endPos="300"
+                freq="10"
+                file="reports/sumo_output/det_J1_north.xml"
+                friendlyPos="true"
+                name="J1 north approach detector"/>
+
+    <!-- Approach to J1 from south (Route B entry point) -->
+    <e2Detector id="det_J1_south"
+                lane="e_J1_J3_0"
+                pos="0"
+                endPos="300"
+                freq="10"
+                file="reports/sumo_output/det_J1_south.xml"
+                friendlyPos="true"
+                name="J1 south approach detector"/>
+
+    <!-- Approach to J2 (Route A: J1 -> J2) -->
+    <e2Detector id="det_J2_west"
+                lane="e_J1_J2_0"
+                pos="0"
+                endPos="300"
+                freq="10"
+                file="reports/sumo_output/det_J2_west.xml"
+                friendlyPos="true"
+                name="J2 west approach detector"/>
+
+    <!-- Approach to J4 from north (Route A: J2 -> J4) -->
+    <e2Detector id="det_J4_north"
+                lane="e_J2_J4_0"
+                pos="0"
+                endPos="300"
+                freq="10"
+                file="reports/sumo_output/det_J4_north.xml"
+                friendlyPos="true"
+                name="J4 north approach detector"/>
+
+    <!-- Approach to J4 from west (Route B: J3 -> J4) -->
+    <e2Detector id="det_J4_west"
+                lane="e_J3_J4_0"
+                pos="0"
+                endPos="300"
+                freq="10"
+                file="reports/sumo_output/det_J4_west.xml"
+                friendlyPos="true"
+                name="J4 west approach detector"/>
+
+    <!-- Hospital approach (J4 -> H1) -->
+    <e2Detector id="det_H1_approach"
+                lane="e_J4_H1_0"
+                pos="0"
+                endPos="50"
+                freq="10"
+                file="reports/sumo_output/det_H1_approach.xml"
+                friendlyPos="true"
+                name="Hospital H1 approach detector"/>
+
+    <!-- ── Summary output ───────────────────────────────────────────── -->
+    <edgeData id="edge_stats"
+              freq="60"
+              file="reports/sumo_output/edge_stats.xml"
+              excludeEmpty="true"/>
+
+    <laneData id="lane_stats"
+              freq="60"
+              file="reports/sumo_output/lane_stats.xml"
+              excludeEmpty="true"/>
+
+</additional>
+

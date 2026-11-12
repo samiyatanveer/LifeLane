@@ -1,0 +1,44 @@
+# LifeLane — Phase 1 Core Engine Dependencies
+# Python 3.10+ required (tested on 3.11)
+#
+# Install:  pip install -r requirements.txt
+#
+# SUMO must be installed separately from https://sumo.dlr.de/docs/Downloads.php
+# and SUMO_HOME environment variable must be set.
+#
+# UrbanSound8K must be downloaded manually — see scripts/download_instructions.md
+
+# --- Core numeric / data ---
+numpy>=1.26,<3
+pandas>=2.0,<3
+
+# --- Audio processing (Phase 4) ---
+soundfile>=0.12
+librosa>=0.10
+# tensorflow>=2.15,<2.17    # uncomment when starting Phase 4 (YAMNet)
+# tensorflow-hub>=0.15      # uncomment when starting Phase 4
+
+# --- ML (Phase 4 onwards) ---
+scikit-learn>=1.4
+joblib>=1.3
+xgboost>=2.0              # Phase 5: ETA/queue regression
+
+# --- Configuration ---
+pyyaml>=6.0
+
+# --- Testing ---
+pytest>=8.0
+pytest-mock>=3.12
+
+# --- SUMO Python bindings (Phase 3) ---
+# traci and sumolib are included with the SUMO installation.
+# If you installed Eclipse SUMO via pip:
+# eclipse-sumo>=1.19       # uncomment if using pip-installed SUMO
+
+# --- Later phases (do NOT install now) ---
+# fastapi>=0.115           # Phase 8
+# uvicorn[standard]>=0.30  # Phase 8
+# sqlalchemy>=2.0          # Phase 7
+# alembic>=1.13            # Phase 7
+# psycopg2-binary>=2.9     # Phase 7
+

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  grid.rou.xml — Vehicle routes and demand for the LifeLane mock simulation.
+
+  Vehicle types:
+    - car:       Standard passenger vehicle
+    - ambulance: LifeLane priority vehicle (distinctive colour)
+
+  Routes:
+    - r_EW:      West-to-east crossing (J1 -> J2)
+    - r_NS:      North-to-south crossing (J1 -> J3)
+    - r_amb_A:   Ambulance Route A: J1 -> J2 -> J4 -> H1
+    - r_amb_B:   Ambulance Route B: J1 -> J3 -> J4 -> H1
+
+  Flows model light/medium/heavy background traffic;
+  individual ambulance vehicles are inserted by the scenario runner.
+
+  *** SIMULATION ONLY — never connected to real traffic infrastructure ***
+-->
+<routes>
+
+    <!-- ── Vehicle type definitions ─────────────────────────────────── -->
+    <vType id="car"
+           accel="2.6" decel="4.5" sigma="0.5"
+           length="4.5" maxSpeed="13.89"
+           color="0.5,0.5,0.5"/>
+
+    <vType id="ambulance"
+           accel="3.0" decel="5.0" sigma="0.0"
+           length="5.5" maxSpeed="16.67"
+           color="1.0,0.0,0.0"
+           vClass="emergency"
+           speedFactor="1.2"/>
+
+    <!-- ── Named routes ─────────────────────────────────────────────── -->
+
+    <!-- Background traffic: east-west corridor -->
+    <route id="r_EW_J1J2" edges="e_J1_J2"/>
+    <route id="r_WE_J2J1" edges="e_J2_J1"/>
+
+    <!-- Background traffic: north-south corridor -->
+    <route id="r_NS_J1J3" edges="e_J1_J3"/>
+    <route id="r_SN_J3J1" edges="e_J3_J1"/>
+
+    <!-- Cross-grid routes -->
+    <route id="r_J2J4" edges="e_J2_J4"/>
+    <route id="r_J4J2" edges="e_J4_J2"/>
+    <route id="r_J3J4" edges="e_J3_J4"/>
+    <route id="r_J4J3" edges="e_J4_J3"/>
+
+    <!-- Ambulance Route A: north approach J1 -> J2 -> J4 -> H1 -->
+    <route id="r_amb_A" edges="e_J1_J2 e_J2_J4 e_J4_H1"/>
+
+    <!-- Ambulance Route B: south approach J1 -> J3 -> J4 -> H1 -->
+    <route id="r_amb_B" edges="e_J1_J3 e_J3_J4 e_J4_H1"/>
+
+    <!-- ── Background traffic flows (light demand, seed-independent) ── -->
+    <!--
+      These flows run for the full simulation duration (3600 s).
+      Demand multiplier is applied programmatically by the scenario runner.
+      Base demand: 1 vehicle per 30 s per direction (light).
+    -->
+    <flow id="flow_EW"  type="car" route="r_EW_J1J2"  begin="0" end="3600" period="30" departLane="best"/>
+    <flow id="flow_WE"  type="car" route="r_WE_J2J1"  begin="0" end="3600" period="30" departLane="best"/>
+    <flow id="flow_NS"  type="car" route="r_NS_J1J3"  begin="0" end="3600" period="30" departLane="best"/>
+    <flow id="flow_SN"  type="car" route="r_SN_J3J1"  begin="0" end="3600" period="30" departLane="best"/>
+    <flow id="flow_J2J4" type="car" route="r_J2J4"   begin="0" end="3600" period="45" departLane="best"/>
+    <flow id="flow_J4J2" type="car" route="r_J4J2"   begin="0" end="3600" period="45" departLane="best"/>
+    <flow id="flow_J3J4" type="car" route="r_J3J4"   begin="0" end="3600" period="45" departLane="best"/>
+    <flow id="flow_J4J3" type="car" route="r_J4J3"   begin="0" end="3600" period="45" departLane="best"/>
+
+    <!-- ── Ambulance vehicles (inserted by scenario runner) ─────────── -->
+    <!--
+      Ambulances are NOT pre-defined here; the SUMO runner inserts them
+      via TraCI's vehicle.add() at the appropriate simulation time,
+      using route r_amb_A or r_amb_B depending on the scenario.
+
+      Example (for documentation):
+        <vehicle id="ambulance_001" type="ambulance" route="r_amb_A" depart="60"/>
+    -->
+
+</routes>
+

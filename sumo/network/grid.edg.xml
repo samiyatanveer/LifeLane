@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  grid.edg.xml — Edge (road) definitions for the LifeLane 2x2 mock grid.
+
+  All edges are bidirectional (each direction is a separate edge).
+  Speed: 50 km/h (13.89 m/s) on main roads, 30 km/h (8.33 m/s) to hospital.
+  Lanes: 2 lanes on each edge.
+
+  Ambulance corridor routes:
+      Route A: J1 -> J2 -> J4 -> H1  (via north-east)
+      Route B: J1 -> J3 -> J4 -> H1  (via south)
+
+  *** SIMULATION ONLY — never connected to real traffic infrastructure ***
+-->
+<edges>
+    <!-- North row: J1 <-> J2 -->
+    <edge id="e_J1_J2" from="J1" to="J2" numLanes="2" speed="13.89" length="300"/>
+    <edge id="e_J2_J1" from="J2" to="J1" numLanes="2" speed="13.89" length="300"/>
+
+    <!-- South row: J3 <-> J4 -->
+    <edge id="e_J3_J4" from="J3" to="J4" numLanes="2" speed="13.89" length="300"/>
+    <edge id="e_J4_J3" from="J4" to="J3" numLanes="2" speed="13.89" length="300"/>
+
+    <!-- West column: J1 <-> J3 -->
+    <edge id="e_J1_J3" from="J1" to="J3" numLanes="2" speed="13.89" length="300"/>
+    <edge id="e_J3_J1" from="J3" to="J1" numLanes="2" speed="13.89" length="300"/>
+
+    <!-- East column: J2 <-> J4 -->
+    <edge id="e_J2_J4" from="J2" to="J4" numLanes="2" speed="13.89" length="300"/>
+    <edge id="e_J4_J2" from="J4" to="J2" numLanes="2" speed="13.89" length="300"/>
+
+    <!-- Hospital access: J4 -> H1 (one-way; ambulance egress) -->
+    <edge id="e_J4_H1" from="J4" to="H1" numLanes="2" speed="8.33"  length="50"/>
+
+    <!-- Approach edges — ambulances enter the grid from outside -->
+    <!-- North approach to J1 (ambulance arrives from north) -->
+    <edge id="e_north_J1" from="J1" to="J1" numLanes="1" speed="13.89" length="1"/>
+    <!-- Used as virtual "origin" only; SUMO requires from != to, so we omit
+         and let ambulance depart from e_J1_J2 / e_J1_J3 directly. -->
+</edges>
+

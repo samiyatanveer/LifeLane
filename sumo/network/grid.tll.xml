@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  grid.tll.xml — Traffic-light (signal) program definitions.
+
+  One program per junction (J1–J4).
+  Each junction has a 60-second cycle with explicit yellow and all-red gaps.
+
+  Phase structure per junction:
+      0: Green EW (east-west)    — 27 s
+      1: Yellow EW               —  3 s
+      2: All-red                 —  3 s
+      3: Green NS (north-south)  — 24 s
+      4: Yellow NS               —  3 s
+
+  Total cycle = 60 s
+
+  Signal string format (SUMO): GGrrGGrr / yyrryyrrr / rrrrrrrr / rrGGrrGG / rryyrryy
+  Lane ordering assumed: EW_straight, EW_turn, NS_straight, NS_turn
+  (simplified 4-movement representation for the 2-lane grid)
+
+  *** SIMULATION ONLY — never connected to real traffic infrastructure ***
+-->
+<tlLogics>
+
+    <!-- ── J1 ─────────────────────────────────────────────────────────── -->
+    <tlLogic id="J1" type="static" programID="lifelane_fixed" offset="0">
+        <!-- Phase 0: East-West green -->
+        <phase duration="27" state="GGrrGGrr"/>
+        <!-- Phase 1: East-West yellow -->
+        <phase duration="3"  state="yyrryyrrr"/>
+        <!-- Phase 2: All-red clearance -->
+        <phase duration="3"  state="rrrrrrrr"/>
+        <!-- Phase 3: North-South green -->
+        <phase duration="24" state="rrGGrrGG"/>
+        <!-- Phase 4: North-South yellow -->
+        <phase duration="3"  state="rryyrryy"/>
+    </tlLogic>
+
+    <!-- ── J2 ─────────────────────────────────────────────────────────── -->
+    <tlLogic id="J2" type="static" programID="lifelane_fixed" offset="10">
+        <phase duration="27" state="GGrrGGrr"/>
+        <phase duration="3"  state="yyrryyrrr"/>
+        <phase duration="3"  state="rrrrrrrr"/>
+        <phase duration="24" state="rrGGrrGG"/>
+        <phase duration="3"  state="rryyrryy"/>
+    </tlLogic>
+
+    <!-- ── J3 ─────────────────────────────────────────────────────────── -->
+    <tlLogic id="J3" type="static" programID="lifelane_fixed" offset="20">
+        <phase duration="27" state="GGrrGGrr"/>
+        <phase duration="3"  state="yyrryyrrr"/>
+        <phase duration="3"  state="rrrrrrrr"/>
+        <phase duration="24" state="rrGGrrGG"/>
+        <phase duration="3"  state="rryyrryy"/>
+    </tlLogic>
+
+    <!-- ── J4 ─────────────────────────────────────────────────────────── -->
+    <tlLogic id="J4" type="static" programID="lifelane_fixed" offset="30">
+        <phase duration="27" state="GGrrGGrr"/>
+        <phase duration="3"  state="yyrryyrrr"/>
+        <phase duration="3"  state="rrrrrrrr"/>
+        <phase duration="24" state="rrGGrrGG"/>
+        <phase duration="3"  state="rryyrryy"/>
+    </tlLogic>
+
+</tlLogics>
+
