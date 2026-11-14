@@ -55,3 +55,15 @@ sumo_output/
 LifeLane_Antigravity_Master_Prompt.md
 LifeLane_Antigravity_Project_Spec.md
 LifeLane_Antigravity_Project_Spec_v2.md 
+# Backend / Frontend additions
+*.db
+*.db-journal
+lifelane.db
+frontend/node_modules/
+frontend/dist/
+frontend/.pnpm-store/
+backend/__pycache__/
+backend/**/__pycache__/
+uploads/
+
+uvicorn_*.txt
