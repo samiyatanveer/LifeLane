@@ -1,6 +1,6 @@
 const VARIANTS = {
-  primary: 'bg-[#087F5B] hover:bg-[#0B5D3B] text-white border-transparent disabled:opacity-50',
-  secondary: 'bg-white hover:bg-gray-50 text-[#087F5B] border-[#087F5B] disabled:opacity-50',
+  primary: 'bg-gradient-to-r from-[#063d2b] to-[#087f5b] hover:brightness-110 text-white border-transparent disabled:opacity-50 shadow-sm shadow-emerald-900/20',
+  secondary: 'bg-white hover:bg-green-50 text-[#087f5b] border-green-200 disabled:opacity-50',
   danger: 'bg-red-600 hover:bg-red-700 text-white border-transparent disabled:opacity-50',
   ghost: 'bg-transparent hover:bg-gray-100 text-gray-700 border-transparent disabled:opacity-50',
 };
@@ -27,7 +27,7 @@ export default function Button({
       type={type}
       disabled={disabled || loading}
       onClick={onClick}
-      className={`inline-flex items-center justify-center gap-2 font-medium rounded-lg border transition-colors cursor-pointer
+      className={`inline-flex items-center justify-center gap-2 font-medium rounded-xl border transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2
         ${VARIANTS[variant]} ${SIZES[size]} ${className}
         disabled:cursor-not-allowed`}
       {...props}

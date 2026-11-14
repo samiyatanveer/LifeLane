@@ -5,7 +5,7 @@ const STATE_CLASS_MAP = {
   CONFIRMED: 'bg-amber-100 text-amber-800 border-amber-200',
   PREPARING: 'bg-orange-100 text-orange-800 border-orange-200',
   SERVING: 'bg-red-100 text-red-800 border-red-200',
-  RECOVERING: 'bg-blue-100 text-blue-800 border-blue-200',
+  RECOVERING: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   ACTIVE: 'bg-green-100 text-green-800 border-green-200',
   PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   COMPLETED: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -21,7 +21,7 @@ const VARIANT_CLASS_MAP = {
   primary: 'bg-green-100 text-green-800 border-green-200',
   warning: 'bg-amber-100 text-amber-800 border-amber-200',
   danger: 'bg-red-100 text-red-800 border-red-200',
-  info: 'bg-blue-100 text-blue-800 border-blue-200',
+  info: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   simulation: 'bg-red-50 text-red-700 border-red-300 font-bold',
 };
 

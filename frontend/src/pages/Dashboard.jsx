@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, RefreshCw } from 'lucide-react';
+import { Menu, RefreshCw, Activity, MapPinned, Radio } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -7,6 +7,7 @@ import StatusDot from '../components/ui/StatusDot';
 import SimulationBadge from '../components/ui/SimulationBadge';
 import Alert from '../components/ui/Alert';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import DetectionChart from '../components/charts/DetectionChart';
 import { useHealth } from '../hooks/useHealth';
 import { useDetections } from '../hooks/useDetections';
@@ -21,7 +22,7 @@ const STATE_COLOR_MAP = {
   CONFIRMED: 'bg-amber-100 border-amber-300 text-amber-900',
   PREPARING: 'bg-orange-100 border-orange-300 text-orange-900',
   SERVING: 'bg-red-100 border-red-300 text-red-900',
-  RECOVERING: 'bg-blue-100 border-blue-300 text-blue-900',
+  RECOVERING: 'bg-emerald-100 border-emerald-300 text-emerald-900',
 };
 
 const STATE_DOT_COLOR = {
@@ -30,7 +31,7 @@ const STATE_DOT_COLOR = {
   CONFIRMED: 'amber',
   PREPARING: 'amber',
   SERVING: 'red',
-  RECOVERING: 'blue',
+  RECOVERING: 'green',
 };
 
 function JunctionCard({ junction }) {
@@ -60,10 +61,14 @@ function JunctionCard({ junction }) {
   );
 }
 
-function StatCard({ label, value, sub, loading }) {
+function StatCard({ label, value, sub, loading, icon: Icon }) {
   return (
-    <Card>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</p>
+    <Card className="relative overflow-hidden">
+      <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full bg-emerald-50" />
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</p>
+        {Icon && <span className="grid place-items-center w-8 h-8 rounded-lg bg-emerald-50 text-[#087f5b]"><Icon className="w-4 h-4" /></span>}
+      </div>
       {loading ? (
         <div className="h-8 w-16 bg-gray-100 rounded animate-pulse" />
       ) : (
@@ -100,12 +105,12 @@ export default function Dashboard() {
   const junctions = JUNCTION_IDS.map((id) => signalMap[id] || { junction_id: id, id, state: 'NORMAL' });
 
   return (
-    <div className="min-h-screen bg-[#F6F8F7] flex">
+    <div className="ops-page min-h-screen bg-[#F6F8F7] flex">
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       <div className="flex-1 lg:pl-64 flex flex-col">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
+        <header className="ops-header sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
           <button
             className="lg:hidden p-2 rounded-md hover:bg-gray-100"
             onClick={() => setMobileOpen(true)}
@@ -118,6 +123,7 @@ export default function Dashboard() {
             <p className="text-xs text-gray-400 hidden sm:block">{currentTime}</p>
           </div>
           <SimulationBadge />
+          <ThemeToggle />
           <button
             onClick={refetch}
             className="p-2 rounded-md hover:bg-gray-100 text-gray-500"
@@ -127,7 +133,22 @@ export default function Dashboard() {
           </button>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 space-y-6">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+          <section className="emerald-panel relative overflow-hidden rounded-3xl px-5 py-6 sm:px-7 sm:py-7">
+            <div className="absolute -right-16 -top-20 w-64 h-64 rounded-full border border-white/15" />
+            <div className="absolute right-10 bottom-0 w-32 h-32 rounded-full bg-emerald-300/10 blur-2xl" />
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[.18em] text-emerald-100">Emergency mobility coordination</p>
+                <h2 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight">Simulation operations center</h2>
+                <p className="mt-2 max-w-xl text-sm text-emerald-100/85">Monitor verified audio events and traffic-priority simulation activity across the LifeLane network.</p>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-emerald-950/20 px-4 py-3 backdrop-blur-sm">
+                <span className={`w-2.5 h-2.5 rounded-full ${online ? 'bg-emerald-300 shadow-[0_0_12px_#6ee7b7]' : 'bg-amber-300'}`} />
+                <div><p className="text-[10px] uppercase tracking-wider text-emerald-100/70">Service status</p><p className="text-sm font-bold">{online ? 'System connected' : 'Checking service'}</p></div>
+              </div>
+            </div>
+          </section>
           {/* Backend status */}
           {online === false && (
             <Alert variant="error" title="Backend Offline">
@@ -136,7 +157,7 @@ export default function Dashboard() {
             </Alert>
           )}
           {online === true && (
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">
+            <div className="system-online flex items-center gap-2 text-sm rounded-lg px-4 py-2">
               <StatusDot color="green" />
               <span className="font-medium">Backend Online</span>
               {lastUpdated && <span className="text-green-500 text-xs ml-auto">Updated {formatRelativeTime(lastUpdated)}</span>}
@@ -150,24 +171,28 @@ export default function Dashboard() {
               value={health ? (health.status === 'ok' ? '✓ OK' : health.status) : (online === false ? 'Offline' : '—')}
               sub={health?.uptime_s ? `Up ${formatUptime(health.uptime_s)}` : undefined}
               loading={online === null}
+              icon={Activity}
             />
             <StatCard
               label="Total Detections"
               value={stats?.total_detections ?? (online === false ? '—' : '...')}
               sub="All time"
               loading={online === null}
+              icon={Radio}
             />
             <StatCard
               label="Active Requests"
               value={stats?.active_requests ?? '—'}
               sub="In progress"
               loading={online === null}
+              icon={Activity}
             />
             <StatCard
               label="Junctions Serving"
               value={stats?.junctions_serving ?? '—'}
               sub="Of 4 total"
               loading={online === null}
+              icon={MapPinned}
             />
           </div>
 
@@ -191,7 +216,7 @@ export default function Dashboard() {
 
           {/* Junction grid */}
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Junction Status</h2>
+            <div className="flex items-end justify-between mb-3"><div><p className="section-eyebrow">Network view</p><h2 className="mt-1 text-lg font-bold text-gray-900">Junction status</h2></div><span className="text-xs text-gray-400">Live controller state</span></div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {junctions.map((j) => (
                 <JunctionCard key={j.junction_id || j.id} junction={j} />
@@ -202,13 +227,13 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {/* Detection chart */}
             <Card>
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Detection Overview (Last 20)</h2>
+              <p className="section-eyebrow">Recognition intelligence</p><h2 className="mt-1 text-lg font-bold text-gray-900 mb-4">Detection overview</h2>
               {detectLoading ? <LoadingSpinner /> : <DetectionChart detections={detections} />}
             </Card>
 
             {/* Recent events */}
             <Card>
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Recent Events</h2>
+              <p className="section-eyebrow">Activity stream</p><h2 className="mt-1 text-lg font-bold text-gray-900 mb-4">Recent events</h2>
               {eventsLoading ? (
                 <LoadingSpinner />
               ) : events.length === 0 ? (

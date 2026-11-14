@@ -2,7 +2,7 @@ import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react';
 import { useState } from 'react';
 
 const VARIANTS = {
-  info: { bg: 'bg-blue-50 border-blue-200', text: 'text-blue-800', icon: Info },
+  info: { bg: 'bg-green-50 border-green-200', text: 'text-green-800', icon: Info },
   warning: { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', icon: AlertTriangle },
   error: { bg: 'bg-red-50 border-red-200', text: 'text-red-800', icon: AlertCircle },
   success: { bg: 'bg-green-50 border-green-200', text: 'text-green-800', icon: CheckCircle },

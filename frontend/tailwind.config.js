@@ -4,9 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        'll-deep': '#0B5D3B',
+        'll-deep': '#063D2B',
         'primary': '#087F5B',
-        'dark-forest': '#063D2B',
+        'dark-forest': '#032B1C',
         'mint': '#EAF6EF',
         'page-bg': '#F6F8F7',
         'card': '#FFFFFF',

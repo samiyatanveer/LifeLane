@@ -15,7 +15,7 @@ const STATE_COLORS_MAP = {
   CONFIRMED: '#D97706',
   PREPARING: '#EA580C',
   SERVING: '#C0392B',
-  RECOVERING: '#2563EB',
+  RECOVERING: '#0D9488',
 };
 
 export default function SignalStateChart({ signals = [] }) {

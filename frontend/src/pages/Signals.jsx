@@ -8,6 +8,7 @@ import Alert from '../components/ui/Alert';
 import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import StatusDot from '../components/ui/StatusDot';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import { useSignals } from '../hooks/useSignals';
 import { useEvents } from '../hooks/useEvents';
 import { simulateSignal } from '../api/signals';
@@ -41,8 +42,8 @@ const STATE_CONFIG = {
     label: 'SERVING',
   },
   RECOVERING: {
-    bg: 'bg-blue-50 border-blue-300 text-blue-900',
-    dot: 'blue',
+    bg: 'bg-emerald-50 border-emerald-300 text-emerald-900',
+    dot: 'green',
     label: 'RECOVERING',
   },
 };
@@ -84,12 +85,12 @@ export default function Signals() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F6F8F7] flex">
+    <div className="ops-page min-h-screen bg-[#F6F8F7] flex">
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       <div className="flex-1 lg:pl-64 flex flex-col">
         {/* Top Header */}
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
+        <header className="ops-header sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
           <button
             className="lg:hidden p-2 rounded-md hover:bg-gray-100"
             onClick={() => setMobileOpen(true)}
@@ -102,6 +103,7 @@ export default function Signals() {
             <h1 className="font-bold text-gray-900 text-lg truncate">Signal Control Simulation</h1>
           </div>
           <SimulationBadge />
+          <ThemeToggle />
           <button
             onClick={() => { refetchSignals(); refetchEvents(); }}
             className="p-2 rounded-md hover:bg-gray-100 text-gray-500"
@@ -276,7 +278,7 @@ export default function Signals() {
                           onClick={() => handleSimulate(jId, 'confirm_passage')}
                           className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-all ${
                             canConfirm && !currentAction
-                              ? 'bg-blue-600 hover:bg-blue-700 text-white border-transparent cursor-pointer'
+                              ? 'bg-[#087F5B] hover:bg-[#063D2B] text-white border-transparent cursor-pointer'
                               : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                           }`}
                         >

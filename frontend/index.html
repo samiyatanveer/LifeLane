@@ -3,11 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LifeLane — Smart Ambulance Signal Priority (Simulation)</title>
-    <meta name="description" content="A simulation-only proof-of-concept for route-aware ambulance preemption. Final Year Project." />
+    <title>LifeLane — Intelligent Ambulance Signal Priority System</title>
+    <meta name="description" content="A smart, route-aware emergency mobility platform for coordinated ambulance signal priority." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      (function () {
+        var theme = localStorage.getItem('lifelane-theme') === 'dark' ? 'dark' : 'light';
+        document.documentElement.classList.add(theme);
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

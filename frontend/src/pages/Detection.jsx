@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import { postDetection } from '../api/detection';
 import { useDetections } from '../hooks/useDetections';
 import { formatTimestamp, formatConfidence, formatFileSize } from '../utils/format';
@@ -133,17 +134,18 @@ export default function Detection() {
   const pagedDetections = detections.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
-    <div className="min-h-screen bg-[#F6F8F7] flex">
+    <div className="ops-page min-h-screen bg-[#F6F8F7] flex">
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       <div className="flex-1 lg:pl-64 flex flex-col">
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
+        <header className="ops-header sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
           <button className="lg:hidden p-2 rounded-md hover:bg-gray-100" onClick={() => setMobileOpen(true)}>
             <Menu className="w-5 h-5 text-gray-600" />
           </button>
           <Mic className="w-5 h-5 text-[#087F5B]" />
           <h1 className="font-bold text-gray-900 text-lg flex-1">Audio Detection</h1>
           <SimulationBadge />
+          <ThemeToggle />
         </header>
 
         <main className="flex-1 p-4 sm:p-6 space-y-6">

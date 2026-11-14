@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { X, Home, Mic, TrafficCone, Clock, ArrowLeft, Ambulance } from 'lucide-react';
 import SimulationBadge from '../ui/SimulationBadge';
+import ThemeToggle from '../ui/ThemeToggle';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: Home, to: '/dashboard' },
@@ -17,8 +18,8 @@ function NavItem({ item, active, onClick }) {
       onClick={onClick}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
         ${active
-          ? 'bg-[#087F5B] text-white'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          ? 'bg-gradient-to-r from-[#063d2b] to-[#087f5b] text-white shadow-md shadow-emerald-900/15'
+          : 'text-gray-600 hover:bg-green-50 hover:text-[#087f5b]'
         }`}
     >
       <Icon className="w-5 h-5 flex-shrink-0" />
@@ -33,10 +34,10 @@ export function SidebarContent({ onClose }) {
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        <Link to="/dashboard" className="flex items-center gap-2 font-bold text-[#087F5B] text-lg" onClick={onClose}>
-          <Ambulance className="w-6 h-6" />
-          LifeLane
+      <div className="flex items-center justify-between p-5 border-b border-gray-200">
+        <Link to="/dashboard" className="flex items-center gap-3 font-bold text-slate-900 text-lg" onClick={onClose}>
+          <span className="grid place-items-center w-9 h-9 rounded-xl bg-gradient-to-br from-[#087f5b] to-[#063d2b] text-white shadow-lg shadow-emerald-900/25"><Ambulance className="w-5 h-5" /></span>
+          <span>Life<span className="text-[#087f5b]">Lane</span></span>
         </Link>
         {onClose && (
           <button onClick={onClose} className="p-1 rounded-md hover:bg-gray-100 lg:hidden">
@@ -46,7 +47,7 @@ export function SidebarContent({ onClose }) {
       </div>
 
       {/* Simulation badge */}
-      <div className="px-4 py-3">
+      <div className="px-4 py-4">
         <SimulationBadge className="w-full justify-center" />
       </div>
 
@@ -63,7 +64,8 @@ export function SidebarContent({ onClose }) {
       </nav>
 
       {/* Back to home */}
-      <div className="px-3 py-4 border-t border-gray-200">
+      <div className="px-3 py-4 border-t border-gray-200 space-y-2">
+        <ThemeToggle className="w-full justify-center" />
         <Link
           to="/"
           onClick={onClose}
@@ -81,7 +83,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-gray-200 lg:bg-white z-30">
+      <aside className="sidebar-surface hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-gray-200 z-30 shadow-[8px_0_30px_rgba(6,61,43,.03)]">
         <SidebarContent />
       </aside>
 
@@ -93,7 +95,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
             onClick={onClose}
             aria-hidden="true"
           />
-          <div className="relative flex flex-col w-72 max-w-xs bg-white shadow-xl">
+          <div className="sidebar-surface relative flex flex-col w-72 max-w-xs shadow-xl">
             <SidebarContent onClose={onClose} />
           </div>
         </div>

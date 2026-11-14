@@ -5,6 +5,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import { useDetections } from '../hooks/useDetections';
 import { useEvents } from '../hooks/useEvents';
 import { formatTimestamp, formatConfidence } from '../utils/format';
@@ -124,12 +125,12 @@ export default function History() {
   const isLoading = detectLoading || eventsLoading;
 
   return (
-    <div className="min-h-screen bg-[#F6F8F7] flex">
+    <div className="ops-page min-h-screen bg-[#F6F8F7] flex">
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       <div className="flex-1 lg:pl-64 flex flex-col">
         {/* Top Header */}
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
+        <header className="ops-header sticky top-0 z-20 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex items-center gap-3">
           <button
             className="lg:hidden p-2 rounded-md hover:bg-gray-100"
             onClick={() => setMobileOpen(true)}
@@ -142,6 +143,7 @@ export default function History() {
             <h1 className="font-bold text-gray-900 text-lg truncate">Audit & Event History</h1>
           </div>
           <SimulationBadge />
+          <ThemeToggle />
           <Button size="sm" variant="secondary" onClick={handleExport} className="flex items-center gap-1.5">
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export JSON</span>
