@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Menu, TrafficCone, ShieldAlert, CheckCircle, RefreshCw, Play, Check, RotateCcw } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/ui/Card';
@@ -121,7 +121,7 @@ export default function Signals() {
               <span className="font-bold tracking-wide uppercase block text-amber-800 mb-0.5">
                 Simulation Disclaimer
               </span>
-              SIMULATION ONLY — This panel simulates signal behavior. It never controls real traffic signals. All actions interact exclusively with the local SUMO-compatible simulation engine.
+              SIMULATION ONLY â€” This panel simulates signal behavior. It never controls real traffic signals. All actions interact exclusively with the local SUMO-compatible simulation engine.
             </div>
           </div>
 
@@ -179,13 +179,13 @@ export default function Signals() {
                       <div>
                         <span className="text-gray-500 block">Approach:</span>
                         <span className="font-semibold text-gray-800 capitalize">
-                          {junc.approach || '—'}
+                          {junc.approach || 'â€”'}
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-500 block">Ambulance:</span>
                         <span className="font-semibold text-gray-800">
-                          {junc.ambulance_id || '—'}
+                          {junc.ambulance_id || 'â€”'}
                         </span>
                       </div>
                       <div>
@@ -358,20 +358,20 @@ export default function Signals() {
                           {formatTimestamp(ev.created_at || ev.timestamp)}
                         </td>
                         <td className="py-2 font-bold text-gray-800">
-                          {ev.junction_id || ev.junction || '—'}
+                          {ev.junction_id || ev.junction || 'â€”'}
                         </td>
                         <td className="py-2">
                           <div className="flex items-center gap-1">
-                            <span className="font-semibold text-gray-600">{ev.from_state || '—'}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="font-bold text-primary">{ev.to_state || ev.state || '—'}</span>
+                            <span className="font-semibold text-gray-600">{ev.from_state || 'â€”'}</span>
+                            <span className="text-gray-400">â†’</span>
+                            <span className="font-bold text-primary">{ev.to_state || ev.state || 'â€”'}</span>
                           </div>
                         </td>
                         <td className="py-2 text-gray-700">
-                          {ev.trigger || ev.action || '—'}
+                          {ev.trigger || ev.action || 'â€”'}
                         </td>
                         <td className="py-2 text-gray-600">
-                          {ev.ambulance_id || '—'}
+                          {ev.ambulance_id || 'â€”'}
                         </td>
                         <td className="py-2">
                           <span className="bg-red-50 text-red-700 border border-red-200 rounded px-1.5 py-0.5 text-[10px] font-bold">

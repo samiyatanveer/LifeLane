@@ -1,26 +1,21 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
-import Detection from './pages/Detection';
-import Signals from './pages/Signals';
-import History from './pages/History';
-import NotFound from './pages/NotFound';
-import { ThemeProvider } from './components/ui/ThemeToggle';
+﻿import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import MainApp from './pages/MainApp';
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/detection" element={<Detection />} />
-          <Route path="/signals" element={<Signals />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/404" element={<NotFound />} />
-          <Route path="*" element={<Navigate to="/404" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </ThemeProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MainApp defaultTab="home" />} />
+        <Route path="/route" element={<MainApp defaultTab="route" />} />
+        <Route path="/system" element={<MainApp defaultTab="system" />} />
+        <Route path="/live" element={<MainApp defaultTab="live" />} />
+        <Route path="/signals" element={<MainApp defaultTab="signals" />} />
+        <Route path="/dashboard" element={<MainApp defaultTab="signals" />} />
+        <Route path="/detection" element={<MainApp defaultTab="live" />} />
+        <Route path="/progress" element={<MainApp defaultTab="progress" />} />
+        <Route path="*" element={<MainApp defaultTab="home" />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Menu, Clock, Download, Search, RotateCcw } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/ui/Card';
@@ -37,9 +37,9 @@ export default function History() {
           type: d.is_siren ? 'SIREN DETECTED' : 'NO SIREN',
           is_siren: d.is_siren,
           confidence: d.confidence,
-          junction_id: d.junction_id || '—',
-          approach: d.approach || '—',
-          details: `Model: ${d.model_type || '—'}, Conf: ${formatConfidence(d.confidence)}`,
+          junction_id: d.junction_id || 'â€”',
+          approach: d.approach || 'â€”',
+          details: `Model: ${d.model_type || 'â€”'}, Conf: ${formatConfidence(d.confidence)}`,
           created_at: d.created_at || d.timestamp || '',
           raw: d,
         });
@@ -51,10 +51,10 @@ export default function History() {
         list.push({
           id: e.id || `sig-${e.created_at}`,
           category: 'SIGNAL_EVENT',
-          type: `${e.from_state || 'NORMAL'} → ${e.to_state || e.state || 'NORMAL'}`,
-          junction_id: e.junction_id || e.junction || '—',
-          approach: e.approach || '—',
-          details: `Trigger: ${e.trigger || '—'}, Amb: ${e.ambulance_id || '—'}`,
+          type: `${e.from_state || 'NORMAL'} â†’ ${e.to_state || e.state || 'NORMAL'}`,
+          junction_id: e.junction_id || e.junction || 'â€”',
+          approach: e.approach || 'â€”',
+          details: `Trigger: ${e.trigger || 'â€”'}, Amb: ${e.ambulance_id || 'â€”'}`,
           created_at: e.created_at || e.timestamp || '',
           raw: e,
         });
@@ -264,7 +264,7 @@ export default function History() {
           {/* Results Summary & Pagination Header */}
           <div className="flex items-center justify-between text-xs text-gray-500 px-1">
             <span>
-              Showing {normalizedRecords.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}–
+              Showing {normalizedRecords.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}â€“
               {Math.min(currentPage * ITEMS_PER_PAGE, normalizedRecords.length)} of {normalizedRecords.length} records
             </span>
             <span>Simulation Log Data</span>
@@ -357,7 +357,7 @@ export default function History() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-sm text-gray-800">
-                            {item.junction_id} • Approach: <span className="capitalize">{item.approach}</span>
+                            {item.junction_id} â€¢ Approach: <span className="capitalize">{item.approach}</span>
                           </span>
                           <span className="font-semibold text-xs text-gray-900">
                             {item.type}

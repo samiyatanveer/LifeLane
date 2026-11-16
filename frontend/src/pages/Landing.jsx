@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Mic, Shield, TrafficCone, Zap, Map, AlertTriangle, Radio, ArrowRight, ChevronDown } from 'lucide-react';
@@ -93,8 +93,8 @@ const STEPS = [
 const FEATURES = [
   { icon: Mic, title: 'Audio ML Detection', tag: 'Intelligence Layer', desc: 'YAMNet embeddings classify siren audio with a trained Logistic Regression model.' },
   { icon: Map, title: 'Route Planning', tag: 'Simulation Environment', desc: 'Emergency routes computed within the SUMO traffic simulation environment.' },
-  { icon: TrafficCone, title: 'Signal Safety', tag: '(Simulated)', desc: 'Signal state machine with bounded recovery — SERVING times out automatically.' },
-  { icon: Shield, title: 'Three-Tier Verification', tag: 'Safety Workflow', desc: 'Audio → Identity → Request approval before any priority is granted.' },
+  { icon: TrafficCone, title: 'Signal Safety', tag: '(Simulated)', desc: 'Signal state machine with bounded recovery â€” SERVING times out automatically.' },
+  { icon: Shield, title: 'Three-Tier Verification', tag: 'Safety Workflow', desc: 'Audio â†’ Identity â†’ Request approval before any priority is granted.' },
   { icon: Zap, title: 'Bounded Recovery', tag: '(Simulated)', desc: 'All signal changes are time-bounded. No junction can stay in SERVING indefinitely.' },
   { icon: Radio, title: 'SUMO Simulation', tag: 'Simulation Environment', desc: 'Industry-standard SUMO traffic simulator models intersection behaviour.' },
 ];
@@ -196,7 +196,7 @@ export default function Landing() {
             <div className="text-center mb-12">
             <span className="text-sm font-semibold text-[#087f5b] uppercase tracking-widest">System Design</span>
               <h2 className="mt-2 text-3xl font-extrabold text-gray-900">System Architecture</h2>
-              <p className="mt-3 text-gray-500">Three-tier verification flow — all within a single simulated environment.</p>
+              <p className="mt-3 text-gray-500">Three-tier verification flow â€” all within a single simulated environment.</p>
             </div>
           </FadeUp>
           <FadeUp delay={0.1}>
@@ -213,7 +213,7 @@ export default function Landing() {
                     <div className="text-xs text-white/70 mt-0.5">{tier.sub}</div>
                   </div>
                   {i < arr.length - 1 && (
-                    <div className="text-gray-400 text-2xl font-light mx-3 my-2 md:my-0">→</div>
+                    <div className="text-gray-400 text-2xl font-light mx-3 my-2 md:my-0">â†’</div>
                   )}
                 </div>
               ))}

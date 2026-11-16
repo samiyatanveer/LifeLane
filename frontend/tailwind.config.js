@@ -1,23 +1,26 @@
-/** @type {import('tailwindcss').Config} */
+﻿/** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  darkMode: ["class", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
-        'll-deep': '#063D2B',
-        'primary': '#087F5B',
-        'dark-forest': '#032B1C',
-        'mint': '#EAF6EF',
-        'page-bg': '#F6F8F7',
-        'card': '#FFFFFF',
-        'text-main': '#172B23',
-        'text-secondary': '#52665B',
-        'border': '#DCE7DF',
-        'warning': '#B7791F',
-        'danger': '#C0392B',
+        'll-g': 'var(--g)',
+        'll-g2': 'var(--g2)',
+        'll-gold': 'var(--gold)',
+        'll-tint': 'var(--tint)',
+        'll-bg': 'var(--bg)',
+        'll-surface': 'var(--surface)',
+        'll-ink': 'var(--ink)',
+        'll-mute': 'var(--mute)',
+        'll-line': 'var(--line)',
+        'll-red': 'var(--red)',
+        'll-amber': 'var(--amber)',
+        'll-road': 'var(--road)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['"Bricolage Grotesque"', 'sans-serif'],
+        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
       },
     },
   },

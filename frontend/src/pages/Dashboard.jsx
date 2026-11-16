@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Menu, RefreshCw, Activity, MapPinned, Radio } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/ui/Card';
@@ -45,7 +45,7 @@ function JunctionCard({ junction }) {
       className={`rounded-xl border-2 p-4 ${colorCls} ${isServing ? 'ring-2 ring-red-400 ring-offset-1' : ''} transition-all`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="font-bold text-base">{junction?.junction_id || junction?.id || '—'}</span>
+        <span className="font-bold text-base">{junction?.junction_id || junction?.id || 'â€”'}</span>
         <div className="flex items-center gap-1.5">
           <StatusDot color={dotColor} animate={isServing} />
           <Badge state={state}>{state}</Badge>
@@ -72,7 +72,7 @@ function StatCard({ label, value, sub, loading, icon: Icon }) {
       {loading ? (
         <div className="h-8 w-16 bg-gray-100 rounded animate-pulse" />
       ) : (
-        <p className="text-3xl font-extrabold text-gray-900">{value ?? '—'}</p>
+        <p className="text-3xl font-extrabold text-gray-900">{value ?? 'â€”'}</p>
       )}
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </Card>
@@ -168,28 +168,28 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               label="System Status"
-              value={health ? (health.status === 'ok' ? '✓ OK' : health.status) : (online === false ? 'Offline' : '—')}
+              value={health ? (health.status === 'ok' ? 'âœ“ OK' : health.status) : (online === false ? 'Offline' : 'â€”')}
               sub={health?.uptime_s ? `Up ${formatUptime(health.uptime_s)}` : undefined}
               loading={online === null}
               icon={Activity}
             />
             <StatCard
               label="Total Detections"
-              value={stats?.total_detections ?? (online === false ? '—' : '...')}
+              value={stats?.total_detections ?? (online === false ? 'â€”' : '...')}
               sub="All time"
               loading={online === null}
               icon={Radio}
             />
             <StatCard
               label="Active Requests"
-              value={stats?.active_requests ?? '—'}
+              value={stats?.active_requests ?? 'â€”'}
               sub="In progress"
               loading={online === null}
               icon={Activity}
             />
             <StatCard
               label="Junctions Serving"
-              value={stats?.junctions_serving ?? '—'}
+              value={stats?.junctions_serving ?? 'â€”'}
               sub="Of 4 total"
               loading={online === null}
               icon={MapPinned}
@@ -207,7 +207,7 @@ export default function Dashboard() {
                 )}
                 {modelInfo.is_synthetic && (
                   <Alert variant="warning" className="mt-0 py-1 px-3 text-xs flex-1">
-                    Running on synthetic/mock model — accuracy is limited.
+                    Running on synthetic/mock model â€” accuracy is limited.
                   </Alert>
                 )}
               </div>

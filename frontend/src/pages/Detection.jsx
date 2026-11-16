@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import { Menu, Upload, X, Mic } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/ui/Card';
@@ -66,7 +66,7 @@ function DropZone({ file, onFile, onClear }) {
           <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-sm font-medium text-gray-600">Drag & drop audio file here</p>
           <p className="text-xs text-gray-400 mt-1">or <span className="text-[#087F5B] underline">click to browse</span></p>
-          <p className="text-xs text-gray-400 mt-2">{ACCEPTED_AUDIO_TYPES.join(', ')} · Max {MAX_FILE_SIZE_MB}MB</p>
+          <p className="text-xs text-gray-400 mt-2">{ACCEPTED_AUDIO_TYPES.join(', ')} Â· Max {MAX_FILE_SIZE_MB}MB</p>
         </div>
       )}
     </div>
@@ -189,7 +189,7 @@ export default function Detection() {
               {error && <Alert variant="error">{error}</Alert>}
 
               <Button type="submit" disabled={!file || loading} loading={loading} className="w-full sm:w-auto">
-                {loading ? 'Analyzing…' : 'Analyze Audio'}
+                {loading ? 'Analyzingâ€¦' : 'Analyze Audio'}
               </Button>
             </form>
           </Card>
@@ -199,7 +199,7 @@ export default function Detection() {
             <Card className="flex flex-col items-center py-8 gap-3">
               <LoadingSpinner size="lg" />
               <div className="text-center">
-                <p className="font-medium text-gray-700">Processing audio…</p>
+                <p className="font-medium text-gray-700">Processing audioâ€¦</p>
                 <p className="text-sm text-gray-400">Extracting embeddings and running classifier</p>
               </div>
             </Card>
@@ -210,7 +210,7 @@ export default function Detection() {
             <Card>
               <div className="text-center mb-4">
                 <div className={`text-3xl font-extrabold mb-2 ${result.is_siren ? 'text-red-600' : 'text-green-700'}`}>
-                  {result.is_siren ? '🚨 SIREN DETECTED' : '✓ NO SIREN'}
+                  {result.is_siren ? 'ðŸš¨ SIREN DETECTED' : 'âœ“ NO SIREN'}
                 </div>
                 <ConfidenceBar value={result.confidence} isSiren={result.is_siren} />
               </div>
@@ -221,7 +221,7 @@ export default function Detection() {
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 uppercase tracking-wide block mb-0.5">Threshold</span>
-                  <span className="font-medium">{result.threshold ?? '—'}</span>
+                  <span className="font-medium">{result.threshold ?? 'â€”'}</span>
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 uppercase tracking-wide block mb-0.5">Junction</span>
@@ -230,7 +230,7 @@ export default function Detection() {
               </div>
               {result.warning && (
                 <Alert variant="warning" className="mt-4">
-                  <strong>⚠ Warning:</strong> {result.warning}
+                  <strong>âš  Warning:</strong> {result.warning}
                 </Alert>
               )}
             </Card>
@@ -266,8 +266,8 @@ export default function Detection() {
                       {pagedDetections.map((d, i) => (
                         <tr key={i} className="hover:bg-gray-50">
                           <td className="py-2.5 pr-4 text-xs text-gray-500">{formatTimestamp(d.created_at || d.timestamp)}</td>
-                          <td className="py-2.5 pr-4 font-medium">{d.junction_id || '—'}</td>
-                          <td className="py-2.5 pr-4 capitalize">{d.approach || '—'}</td>
+                          <td className="py-2.5 pr-4 font-medium">{d.junction_id || 'â€”'}</td>
+                          <td className="py-2.5 pr-4 capitalize">{d.approach || 'â€”'}</td>
                           <td className="py-2.5 pr-4">
                             <span className={`font-semibold ${d.is_siren ? 'text-red-600' : 'text-green-700'}`}>
                               {d.is_siren ? 'SIREN' : 'No Siren'}
