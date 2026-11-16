@@ -5,7 +5,7 @@ import { simulateSignal } from '../api/signals';
 import { getStats } from '../api/health';
 
 export default function SignalsOps() {
-  const { signals, loading: signalsLoading, refresh: refreshSignals } = useSignals(3000);
+  const { signals, refresh: refreshSignals } = useSignals(3000);
   const { events, refresh: refreshEvents } = useEvents(3000);
   const [stats, setStats] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);

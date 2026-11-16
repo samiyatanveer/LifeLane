@@ -250,11 +250,11 @@ export default function LiveDemo() {
           </span>
         </div>
 
-        <form onSubmit={handleUploadSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <form onSubmit={handleUploadSubmit} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
           {/* File Picker */}
-          <div className="md:col-span-2">
+          <div className="sm:col-span-2 md:col-span-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-[var(--mute)] mb-1">
-              Select Audio File (.wav, .mp3, .ogg)
+              Audio File (.wav, .mp3, .ogg)
             </label>
             <input
               type="file"
@@ -262,6 +262,23 @@ export default function LiveDemo() {
               onChange={(e) => setUploadFile(e.target.files[0])}
               className="w-full p-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-xs text-[var(--ink)]"
             />
+          </div>
+
+          {/* Junction Selector */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--mute)] mb-1">
+              Junction
+            </label>
+            <select
+              value={junctionId}
+              onChange={(e) => setJunctionId(e.target.value)}
+              className="w-full p-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-xs font-semibold text-[var(--ink)]"
+            >
+              <option value="J1">Junction J1</option>
+              <option value="J2">Junction J2</option>
+              <option value="J3">Junction J3</option>
+              <option value="J4">Junction J4</option>
+            </select>
           </div>
 
           {/* Approach Direction */}
@@ -274,10 +291,10 @@ export default function LiveDemo() {
               onChange={(e) => setApproach(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface)] text-xs font-semibold text-[var(--ink)]"
             >
-              <option value="north">North Approach</option>
-              <option value="south">South Approach</option>
-              <option value="east">East Approach</option>
-              <option value="west">West Approach</option>
+              <option value="north">North</option>
+              <option value="south">South</option>
+              <option value="east">East</option>
+              <option value="west">West</option>
             </select>
           </div>
 
@@ -286,9 +303,9 @@ export default function LiveDemo() {
             <button
               type="submit"
               disabled={isAnalyzing}
-              className="cta-btn w-full text-sm py-2.5"
+              className="cta-btn w-full text-xs py-2.5 font-bold"
             >
-              {isAnalyzing ? 'Analyzing...' : 'Run ML Analysis'}
+              {isAnalyzing ? 'Analyzing...' : 'Run ML'}
             </button>
           </div>
         </form>
@@ -310,7 +327,7 @@ export default function LiveDemo() {
                   }`}
                   style={{ fontFamily: '"Bricolage Grotesque", sans-serif' }}
                 >
-                  {uploadResult.is_siren ? '?? Emergency Siren Detected' : '? Non-Siren Audio'}
+                  {uploadResult.is_siren ? '🚨 Emergency Siren Detected' : '❌ Non-Siren Audio'}
                 </span>
                 <span className="text-xs font-bold bg-white/70 px-2 py-0.5 rounded-full text-[var(--ink)]">
                   Score: {(uploadResult.confidence * 100).toFixed(1)}%
