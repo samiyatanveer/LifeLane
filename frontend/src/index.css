@@ -1,0 +1,184 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #F3F8F4;
+  --surface: #ffffff;
+  --ink: #0B2417;
+  --mute: #33473A;
+  --line: #D5E3D9;
+  --g: #01411C;
+  --g2: #0F6B3A;
+  --tint: #E2F0E7;
+  --gold: #B8921A;
+  --red: #D62839;
+  --amber: #D98E04;
+  --road: #10281B;
+  --onG: #ffffff;
+  color-scheme: light;
+}
+
+[data-theme="dark"], :root.dark {
+  --bg: #07140D;
+  --surface: #0E2418;
+  --ink: #F2FAF5;
+  --mute: #BCD3C3;
+  --line: #1E3A29;
+  --g: #0B3A20;
+  --g2: #3DBE7A;
+  --tint: #12301F;
+  --gold: #E0B63A;
+  --red: #FF5468;
+  --amber: #FFB93D;
+  --road: #030A06;
+  color-scheme: dark;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg);
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Bricolage Grotesque", "DM Sans", sans-serif;
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+h1 { font-size: clamp(2.3rem, 5.5vw, 4rem); font-weight: 800; }
+h2 { font-size: clamp(1.7rem, 3.5vw, 2.5rem); font-weight: 700; }
+h3 { font-size: 1.35rem; font-weight: 700; }
+
+p {
+  margin: 0;
+  color: var(--mute);
+}
+
+.wrap {
+  width: min(1140px, 92vw);
+  margin-inline: auto;
+}
+
+/* Animations */
+@keyframes blink { 50% { opacity: 0.25; } }
+.siren { animation: blink 0.5s steps(2) infinite; }
+
+@keyframes fl { to { stroke-dashoffset: -22; } }
+.flow { stroke-dasharray: 10 12; animation: fl 1s linear infinite; }
+
+@keyframes pg {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: none; }
+}
+.page-anim { animation: pg 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+.sig circle.lamp { transition: fill 0.35s; }
+.sig.normal circle.lamp { fill: var(--red); }
+.sig.go circle.lamp { fill: #22B866; }
+.sig.rec circle.lamp { fill: var(--amber); }
+
+/* Buttons */
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: "DM Sans", sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  border: 0;
+  border-radius: 12px;
+  padding: 0.8rem 1.4rem;
+  background-color: var(--g);
+  color: #fff;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.cta-btn:hover {
+  opacity: 0.94;
+  transform: translateY(-1px);
+}
+.cta-btn.alt {
+  background-color: var(--tint);
+  color: var(--g2);
+}
+.cta-btn.alt:hover {
+  background-color: var(--line);
+}
+.cta-btn:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+.cta-btn:active {
+  transform: scale(0.98);
+}
+.cta-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Pills */
+.status-pill {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 99px;
+  background-color: var(--tint);
+  color: var(--ink);
+}
+.status-pill s {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--mute);
+  display: inline-block;
+}
+.status-pill.go s { background-color: var(--g2); }
+.status-pill.alert s { background-color: var(--red); }
+.status-pill.rec s { background-color: var(--amber); }
+
+/* Cards */
+.life-card {
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 1.5rem;
+  border-top: 4px solid var(--g2);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.life-card:hover {
+  box-shadow: 0 16px 32px -16px rgba(1, 65, 28, 0.35);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mute); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow, .siren, .page-anim { animation: none !important; }
+  html { scroll-behavior: auto; }
+}

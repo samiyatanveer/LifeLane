@@ -544,3 +544,99 @@ Specification: `LifeLane_Antigravity_Project_Spec_v2.md`.
 **Simulation:** SUMO (Simulation of Urban MObility) â€” https://eclipse.dev/sumo/  
 **Audio features:** YAMNet (Google) â€” https://tfhub.dev/google/yamnet/1  
 **Dataset (planned):** UrbanSound8K â€” https://urbansounddataset.weebly.com/urbansound8k.html
+
+---
+
+## Running the Application (Phases 8–9)
+
+> All commands run from the project root: `C:\Users\hp\Desktop\LifeLane\LifeLane`
+
+### Quick start (opens two windows automatically)
+
+```powershell
+.\start-dev.ps1
+```
+
+### Manual start
+
+**Terminal 1 — Backend (FastAPI on port 8000):**
+
+```powershell
+cd C:\Users\hp\Desktop\LifeLane\LifeLane
+.venv\Scripts\activate
+$env:PYTHONPATH = "src"
+python -m uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Terminal 2 — Frontend (Vite on port 5173):**
+
+```powershell
+cd C:\Users\hp\Desktop\LifeLane\LifeLane\frontend
+pnpm dev
+```
+
+### URLs
+
+| Service | URL |
+|---------|-----|
+| Landing page | http://localhost:5173 |
+| Dashboard | http://localhost:5173/dashboard |
+| Audio detection | http://localhost:5173/detection |
+| Signal simulation | http://localhost:5173/signals |
+| Event history | http://localhost:5173/history |
+| API (Swagger docs) | http://localhost:8000/docs |
+| Health endpoint | http://localhost:8000/api/health |
+
+### Correct backend run command
+
+```powershell
+# The app object lives in backend/app.py, NOT backend/main.py
+python -m uvicorn backend.app:app --reload
+# PYTHONPATH must include "src" so lifelane_engine is importable
+$env:PYTHONPATH = "src"
+```
+
+### Run tests
+
+```powershell
+python -m pytest tests\ -q
+# 286 passed, 7 skipped expected
+```
+
+### Environment variables (optional — defaults work for local dev)
+
+Copy `.env.example` to `.env` to override defaults:
+
+```
+DATABASE_URL=sqlite+aiosqlite:///./lifelane.db
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+LOG_LEVEL=INFO
+MODEL_DIR=models
+```
+
+### Demo walkthrough
+
+1. Open http://localhost:5173 — landing page loads, green theme visible.
+2. Click **Open Dashboard** — health card shows backend connected.
+3. Navigate to **Detection** — upload any `.wav` file, click **Analyze Audio**, see siren result + confidence score.
+4. Navigate to **Signals** — click **Request Priority** on junction J1, set approach `north`, click Simulate. J1 turns red (SERVING).
+5. Click **Confirm Passage** on J1 — transitions SERVING ? RECOVERING ? NORMAL.
+6. Navigate to **History** — full event log shows all transitions.
+
+### What is working vs. mocked
+
+| Feature | Status |
+|---------|--------|
+| Health / model-info endpoints | ? Live |
+| Audio upload + siren detection | ? Live (MockYAMNet — no TensorFlow) |
+| Ambulance registration | ? Live (SQLite DB) |
+| Emergency request lifecycle | ? Live |
+| Signal simulation (4 junctions) | ? Live (in-memory state machine) |
+| Event log | ? Live |
+| Stats dashboard | ? Live |
+| Real YAMNet (TensorFlow) | ?? Mocked — install tensorflow + tensorflow-hub to enable |
+| PostgreSQL | ?? SQLite used — change DATABASE_URL for PostgreSQL |
+| SUMO traffic simulation | ?? MockSumoRunner — install SUMO for real simulation |
+| GPS live tracking | ?? Simulated — in-engine mock |
+| Ambulance-app auth | ?? Simulated — no JWT yet |
+
