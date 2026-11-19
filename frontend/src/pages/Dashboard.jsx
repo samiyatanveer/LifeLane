@@ -4,7 +4,6 @@ import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import StatusDot from '../components/ui/StatusDot';
-import SimulationBadge from '../components/ui/SimulationBadge';
 import Alert from '../components/ui/Alert';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import DetectionChart from '../components/charts/DetectionChart';
@@ -65,17 +64,17 @@ function JunctionCard({ junction }) {
 function StatCard({ label, value, sub, loading, icon: Icon }) {
   return (
     <Card className="relative overflow-hidden">
-      <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full bg-emerald-50" />
-      <div className="flex items-start justify-between gap-3">
+      <div aria-hidden="true" className="absolute -right-4 -top-4 z-0 w-16 h-16 rounded-full bg-emerald-50" />
+      <div className="relative z-10 flex items-start justify-between gap-3">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</p>
         {Icon && <span className="grid place-items-center w-8 h-8 rounded-lg bg-emerald-50 text-[#087f5b]"><Icon className="w-4 h-4" /></span>}
       </div>
       {loading ? (
-        <div className="h-8 w-16 bg-gray-100 rounded animate-pulse" />
+        <div className="relative z-10 h-8 w-16 bg-gray-100 rounded animate-pulse" />
       ) : (
-        <p className="text-3xl font-extrabold text-gray-900">{value ?? '—'}</p>
+        <p className="relative z-10 text-3xl font-extrabold text-gray-900">{value ?? '—'}</p>
       )}
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      {sub && <p className="relative z-10 text-xs text-gray-400 mt-1">{sub}</p>}
     </Card>
   );
 }
@@ -124,7 +123,6 @@ function DispatcherDashboard() {
             <h1 className="font-bold text-gray-900 text-base sm:text-lg truncate">Operations Dashboard</h1>
             <p className="text-xs text-gray-400 hidden sm:block">{currentTime}</p>
           </div>
-          <SimulationBadge />
           <button
             onClick={refetch}
             className="p-2 rounded-md hover:bg-gray-100 text-gray-500"

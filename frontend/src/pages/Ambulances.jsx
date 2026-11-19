@@ -7,7 +7,6 @@ import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import EmptyState from '../components/ui/EmptyState';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import SimulationBadge from '../components/ui/SimulationBadge';
 import { registerAmbulance } from '../api/dispatch';
 import { useAmbulances } from '../hooks/useAmbulances';
 import { formatTimestamp } from '../utils/format';
@@ -96,7 +95,6 @@ export default function Ambulances() {
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-gray-900 text-lg truncate">Ambulance Registry</h1>
           </div>
-          <SimulationBadge />
           <button
             onClick={refetch}
             className="p-2 rounded-md hover:bg-gray-100 text-gray-500"

@@ -7,7 +7,6 @@ import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import EmptyState from '../components/ui/EmptyState';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import SimulationBadge from '../components/ui/SimulationBadge';
 import { createRequest, updateRequestStatus, getRouteOptions, startTemporaryVerification, confirmTemporaryVerification, authorizePriority } from '../api/dispatch';
 import { useAuth } from '../auth/AuthContext';
 import { useRequests } from '../hooks/useRequests';
@@ -172,7 +171,6 @@ export default function Requests() {
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-gray-900 text-lg truncate">Emergency Requests</h1>
           </div>
-          <SimulationBadge />
           <button onClick={refetch} className="p-2 rounded-md hover:bg-gray-100 text-gray-500" title="Refresh">
             <RefreshCw className="w-4 h-4" />
           </button>

@@ -5,7 +5,6 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
-import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { postDetection } from '../api/detection';
 import { useDetections } from '../hooks/useDetections';
@@ -143,7 +142,6 @@ export default function Detection() {
           </button>
           <Mic className="w-5 h-5 text-[#087F5B]" />
           <h1 className="font-bold text-gray-900 text-lg flex-1">Audio Detection</h1>
-          <SimulationBadge />
         </header>
 
         <main className="flex-1 p-4 sm:p-6 space-y-6">

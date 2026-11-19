@@ -3,7 +3,6 @@ import { Menu, Clock, Download, Search, RotateCcw } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useDetections } from '../hooks/useDetections';
 import { useEvents } from '../hooks/useEvents';
@@ -141,7 +140,6 @@ export default function History() {
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-gray-900 text-lg truncate">Audit & Event History</h1>
           </div>
-          <SimulationBadge />
           <Button size="sm" variant="secondary" onClick={handleExport} className="flex items-center gap-1.5">
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export JSON</span>

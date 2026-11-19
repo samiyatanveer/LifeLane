@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { Menu, X, Ambulance } from 'lucide-react';
-import SimulationBadge from '../ui/SimulationBadge';
 
 const NAV_LINKS = [
   { label: 'About', href: '#about' },
@@ -33,7 +32,6 @@ export default function Navbar() {
                 {l.label}
               </a>
             ))}
-            <SimulationBadge />
             <Link
               to="/dashboard"
               className="ml-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#063d2b] to-[#087f5b] text-white text-sm font-semibold hover:brightness-110 transition-all shadow-lg shadow-emerald-900/20"
@@ -66,7 +64,6 @@ export default function Navbar() {
               {l.label}
             </a>
           ))}
-          <SimulationBadge />
           <Link
             to="/dashboard"
             className="block mt-2 px-4 py-2 rounded-lg bg-[#087F5B] text-white text-sm font-medium text-center"

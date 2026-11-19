@@ -5,7 +5,6 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
-import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import StatusDot from '../components/ui/StatusDot';
 import { useSignals } from '../hooks/useSignals';
@@ -101,7 +100,6 @@ export default function Signals() {
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-gray-900 text-lg truncate">Signal Control Simulation</h1>
           </div>
-          <SimulationBadge />
           <button
             onClick={() => { refetchSignals(); refetchEvents(); }}
             className="p-2 rounded-md hover:bg-gray-100 text-gray-500"
@@ -119,7 +117,7 @@ export default function Signals() {
               <span className="font-bold tracking-wide uppercase block text-amber-800 mb-0.5">
                 Simulation Disclaimer
               </span>
-              SIMULATION ONLY â€” This panel simulates signal behavior. It never controls real traffic signals. All actions interact exclusively with the local SUMO-compatible simulation engine.
+              SIMULATION ONLY — This panel simulates signal behavior. It never controls real traffic signals. All actions interact exclusively with the local SUMO-compatible simulation engine.
             </div>
           </div>
 
@@ -177,13 +175,13 @@ export default function Signals() {
                       <div>
                         <span className="text-gray-500 block">Approach:</span>
                         <span className="font-semibold text-gray-800 capitalize">
-                          {junc.approach || 'â€”'}
+                          {junc.approach || '—'}
                         </span>
                       </div>
                       <div>
                         <span className="text-gray-500 block">Ambulance:</span>
                         <span className="font-semibold text-gray-800">
-                          {junc.ambulance_id || 'â€”'}
+                          {junc.ambulance_id || '—'}
                         </span>
                       </div>
                       <div>
@@ -268,7 +266,6 @@ export default function Signals() {
                         >
                           <Play className="w-3.5 h-3.5" />
                           <span>Request Priority</span>
-                          <span className="text-[10px] opacity-75">(SIMULATION)</span>
                         </button>
 
                         <button
@@ -282,7 +279,6 @@ export default function Signals() {
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>Confirm Passage</span>
-                          <span className="text-[10px] opacity-75">(SIMULATION)</span>
                         </button>
                       </div>
 
@@ -293,7 +289,6 @@ export default function Signals() {
                       >
                         <RotateCcw className="w-3 h-3 text-gray-500" />
                         <span>Cancel / Reset Signal</span>
-                        <span className="text-[10px] text-gray-400 font-normal">[SIMULATION ACTION]</span>
                       </button>
                     </div>
                   </div>
@@ -356,20 +351,20 @@ export default function Signals() {
                           {formatTimestamp(ev.created_at || ev.timestamp)}
                         </td>
                         <td className="py-2 font-bold text-gray-800">
-                          {ev.junction_id || ev.junction || 'â€”'}
+                          {ev.junction_id || ev.junction || '—'}
                         </td>
                         <td className="py-2">
                           <div className="flex items-center gap-1">
-                            <span className="font-semibold text-gray-600">{ev.from_state || 'â€”'}</span>
-                            <span className="text-gray-400">â†’</span>
-                            <span className="font-bold text-primary">{ev.to_state || ev.state || 'â€”'}</span>
+                            <span className="font-semibold text-gray-600">{ev.from_state || '—'}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="font-bold text-primary">{ev.to_state || ev.state || '—'}</span>
                           </div>
                         </td>
                         <td className="py-2 text-gray-700">
-                          {ev.trigger || ev.action || 'â€”'}
+                          {ev.trigger || ev.action || '—'}
                         </td>
                         <td className="py-2 text-gray-600">
-                          {ev.ambulance_id || 'â€”'}
+                          {ev.ambulance_id || '—'}
                         </td>
                         <td className="py-2">
                           <span className="bg-red-50 text-red-700 border border-red-200 rounded px-1.5 py-0.5 text-[10px] font-bold">
