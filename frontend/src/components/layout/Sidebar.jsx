@@ -1,12 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
-import { X, Home, Mic, TrafficCone, Clock, ArrowLeft, Ambulance } from 'lucide-react';
+import { X, Home, Mic, TrafficCone, Clock, ArrowLeft, Ambulance, FileText, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import SimulationBadge from '../ui/SimulationBadge';
-import ThemeToggle from '../ui/ThemeToggle';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: Home, to: '/dashboard' },
   { label: 'Detection', icon: Mic, to: '/detection' },
   { label: 'Signals', icon: TrafficCone, to: '/signals' },
+  { label: 'Emergency Requests', icon: FileText, to: '/requests' },
+  { label: 'Ambulance Registry', icon: Ambulance, to: '/ambulances' },
   { label: 'History', icon: Clock, to: '/history' },
 ];
 
@@ -30,6 +33,8 @@ function NavItem({ item, active, onClick }) {
 
 export function SidebarContent({ onClose }) {
   const location = useLocation();
+  const { user, logout } = useAuth(); const navigate = useNavigate();
+  const visibleItems = NAV_ITEMS.filter((item) => !((item.to === '/signals' || item.to === '/ambulances') && !['DISPATCHER', 'ADMIN'].includes(user?.role)));
 
   return (
     <div className="flex flex-col h-full">
@@ -53,7 +58,7 @@ export function SidebarContent({ onClose }) {
 
       {/* Nav items */}
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => (
+        {visibleItems.map((item) => (
           <NavItem
             key={item.to}
             item={item}
@@ -65,7 +70,8 @@ export function SidebarContent({ onClose }) {
 
       {/* Back to home */}
       <div className="px-3 py-4 border-t border-gray-200 space-y-2">
-        <ThemeToggle className="w-full justify-center" />
+        <div className="px-3 text-xs font-semibold text-gray-500 truncate">{user?.username} · {user?.role?.toLowerCase()}</div>
+        <button onClick={async () => { await logout(); navigate('/login'); onClose?.(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"><LogOut className="w-4 h-4" />Sign out</button>
         <Link
           to="/"
           onClick={onClose}

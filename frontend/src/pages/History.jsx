@@ -5,7 +5,6 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import ThemeToggle from '../components/ui/ThemeToggle';
 import { useDetections } from '../hooks/useDetections';
 import { useEvents } from '../hooks/useEvents';
 import { formatTimestamp, formatConfidence } from '../utils/format';
@@ -143,7 +142,6 @@ export default function History() {
             <h1 className="font-bold text-gray-900 text-lg truncate">Audit & Event History</h1>
           </div>
           <SimulationBadge />
-          <ThemeToggle />
           <Button size="sm" variant="secondary" onClick={handleExport} className="flex items-center gap-1.5">
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Export JSON</span>

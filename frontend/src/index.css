@@ -19,22 +19,6 @@
   color-scheme: light;
 }
 
-[data-theme="dark"], :root.dark {
-  --bg: #07140D;
-  --surface: #0E2418;
-  --ink: #F2FAF5;
-  --mute: #BCD3C3;
-  --line: #1E3A29;
-  --g: #0B3A20;
-  --g2: #3DBE7A;
-  --tint: #12301F;
-  --gold: #E0B63A;
-  --red: #FF5468;
-  --amber: #FFB93D;
-  --road: #030A06;
-  color-scheme: dark;
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
 }

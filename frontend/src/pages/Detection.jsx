@@ -7,7 +7,6 @@ import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import ThemeToggle from '../components/ui/ThemeToggle';
 import { postDetection } from '../api/detection';
 import { useDetections } from '../hooks/useDetections';
 import { formatTimestamp, formatConfidence, formatFileSize } from '../utils/format';
@@ -145,7 +144,6 @@ export default function Detection() {
           <Mic className="w-5 h-5 text-[#087F5B]" />
           <h1 className="font-bold text-gray-900 text-lg flex-1">Audio Detection</h1>
           <SimulationBadge />
-          <ThemeToggle />
         </header>
 
         <main className="flex-1 p-4 sm:p-6 space-y-6">

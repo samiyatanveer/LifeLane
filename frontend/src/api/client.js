@@ -7,6 +7,8 @@ const client = axios.create({
     'Accept': 'application/json',
   },
 });
+const savedToken = localStorage.getItem('lifelane-token');
+if (savedToken) client.defaults.headers.common.Authorization = `Bearer ${savedToken}`;
 
 // Response interceptor — normalize errors
 client.interceptors.response.use(

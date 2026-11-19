@@ -16,6 +16,8 @@ from backend.schemas import (
     StatsResponse,
 )
 from backend.services.simulation import get_simulation_service
+from backend.models import UserRecord
+from backend.security import require_roles
 
 router = APIRouter(tags=["signals"])
 
@@ -27,7 +29,12 @@ async def list_signals():
 
 
 @router.post("/signals/{junction_id}/simulate", response_model=SignalStateResponse)
-async def simulate_signal(junction_id: str, payload: SignalSimulateRequest):
+async def simulate_signal(junction_id: str, payload: SignalSimulateRequest, user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
+    if payload.action == "request_priority":
+        raise HTTPException(
+            status_code=403,
+            detail="Priority can only be authorized from a verified emergency request",
+        )
     svc = get_simulation_service()
     try:
         result = svc.simulate_action(
@@ -60,6 +67,12 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     pending_req = (await db.execute(
         select(func.count()).select_from(RequestRecord).where(RequestRecord.status == "PENDING")
     )).scalar() or 0
+    active_req = (await db.execute(
+        select(func.count()).select_from(RequestRecord).where(RequestRecord.status == "ACTIVE")
+    )).scalar() or 0
+    completed_req = (await db.execute(
+        select(func.count()).select_from(RequestRecord).where(RequestRecord.status == "COMPLETED")
+    )).scalar() or 0
 
     svc = get_simulation_service()
     sim_stats = svc.get_stats()
@@ -70,6 +83,8 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         total_ambulances=int(total_amb),
         total_requests=int(total_req),
         pending_requests=int(pending_req),
+        active_requests=int(active_req),
+        completed_requests=int(completed_req),
         active_junctions=sim_stats["active_junctions"],
         signal_events=sim_stats["signal_events"],
     )

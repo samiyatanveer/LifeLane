@@ -8,7 +8,6 @@ import Alert from '../components/ui/Alert';
 import SimulationBadge from '../components/ui/SimulationBadge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import StatusDot from '../components/ui/StatusDot';
-import ThemeToggle from '../components/ui/ThemeToggle';
 import { useSignals } from '../hooks/useSignals';
 import { useEvents } from '../hooks/useEvents';
 import { simulateSignal } from '../api/signals';
@@ -103,7 +102,6 @@ export default function Signals() {
             <h1 className="font-bold text-gray-900 text-lg truncate">Signal Control Simulation</h1>
           </div>
           <SimulationBadge />
-          <ThemeToggle />
           <button
             onClick={() => { refetchSignals(); refetchEvents(); }}
             className="p-2 rounded-md hover:bg-gray-100 text-gray-500"

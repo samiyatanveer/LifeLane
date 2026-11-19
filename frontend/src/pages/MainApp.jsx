@@ -5,13 +5,12 @@ import RoutePlanner from '../components/RoutePlanner';
 import SystemOverview from '../components/SystemOverview';
 import LiveDemo from '../components/LiveDemo';
 import SignalsOps from '../components/SignalsOps';
-import ProgressOverview from '../components/ProgressOverview';
 import Footer from '../components/Footer';
 
 export default function MainApp({ defaultTab = 'home' }) {
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '');
-    const validTabs = ['home', 'route', 'system', 'live', 'signals', 'progress'];
+    const validTabs = ['home', 'route', 'system', 'live', 'signals'];
     return validTabs.includes(hash) ? hash : defaultTab;
   });
 
@@ -19,7 +18,7 @@ export default function MainApp({ defaultTab = 'home' }) {
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      const validTabs = ['home', 'route', 'system', 'live', 'signals', 'progress'];
+      const validTabs = ['home', 'route', 'system', 'live', 'signals'];
       if (validTabs.includes(hash)) {
         setActiveTab(hash);
       }
@@ -45,7 +44,6 @@ export default function MainApp({ defaultTab = 'home' }) {
           {activeTab === 'system' && <SystemOverview />}
           {activeTab === 'live' && <LiveDemo />}
           {activeTab === 'signals' && <SignalsOps />}
-          {activeTab === 'progress' && <ProgressOverview />}
         </main>
       </div>
 
