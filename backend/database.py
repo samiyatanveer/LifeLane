@@ -42,6 +42,13 @@ async def init_db():
             "ALTER TABLE ambulances ADD COLUMN lifelane_id VARCHAR(64)",
             "ALTER TABLE users ADD COLUMN management_id VARCHAR(64)",
             "ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1",
+            "ALTER TABLE users ADD COLUMN email VARCHAR(254)",
+            "ALTER TABLE requests ADD COLUMN emergency_notes TEXT",
+            "ALTER TABLE requests ADD COLUMN origin_latitude FLOAT",
+            "ALTER TABLE requests ADD COLUMN origin_longitude FLOAT",
+            "ALTER TABLE requests ADD COLUMN origin_address VARCHAR(512)",
+            "ALTER TABLE requests ADD COLUMN origin_city VARCHAR(128)",
+            "ALTER TABLE requests ADD COLUMN location_source VARCHAR(16)",
         ):
             try:
                 await conn.exec_driver_sql(statement)
@@ -49,7 +56,7 @@ async def init_db():
                 pass
         # This project uses a small, idempotent SQLite migration rather than Alembic.
         # Backfill before adding indexes so no existing installation loses data.
-        from backend.models import AmbulanceRecord, UserRecord
+        from backend.models import AmbulanceRecord, HospitalRecord, UserRecord
         import secrets
         from sqlalchemy import select
         # ORM backfill work runs after the DDL transaction below.
@@ -78,9 +85,33 @@ async def init_db():
                 user.management_id = candidate
                 management_ids.add(candidate)
         await session.commit()
+    # A source-attributed starter record prevents a fresh demo from presenting an
+    # unusable empty destination picker. It is explicitly UNVERIFIED and is not
+    # a claim of nationwide directory coverage.
+    async with AsyncSessionLocal() as session:
+        has_hospital = (await session.execute(select(HospitalRecord.id).limit(1))).scalar_one_or_none()
+        if not has_hospital:
+            session.add(HospitalRecord(
+                id="osm-26422754-shifa-islamabad",
+                name="Shifa International Hospital",
+                address="Pitras Bukhari Road, Sector H-8/4",
+                city="Islamabad",
+                province="Islamabad Capital Territory",
+                latitude=33.6752,
+                longitude=73.0676,
+                hospital_type="Hospital",
+                verification_status="UNVERIFIED",
+                is_active=True,
+                source_name="OpenStreetMap contributors (ODbL)",
+                source_url="https://www.openstreetmap.org/",
+            ))
+            await session.commit()
     async with engine.begin() as conn:
+        await conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_hospitals_lookup ON hospitals (is_active, province, city)")
+        await conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_hospitals_name ON hospitals (name)")
         await conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ux_ambulances_lifelane_id ON ambulances (lifelane_id)")
         await conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ux_ambulances_registration_number ON ambulances (registration_number)")
         # Enforce the public duplicate rule even when two normalized variants race.
         await conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ux_ambulances_registration_normalized ON ambulances (upper(trim(registration_number)))")
         await conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_management_id ON users (management_id)")
+        await conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email ON users (email)")

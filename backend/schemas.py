@@ -31,6 +31,7 @@ class AmbulanceRegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
     contact_name: str = Field(..., min_length=2, max_length=128)
     contact_phone: str = Field(..., min_length=7, max_length=32)
+    email: str = Field(..., min_length=3, max_length=254)
     vehicle_type: str = Field(..., min_length=2, max_length=64)
     @field_validator("registration_number")
     @classmethod
@@ -43,6 +44,13 @@ class AmbulanceRegisterRequest(BaseModel):
     def phone_format(cls, value: str) -> str:
         if not re.fullmatch(r"\+?[0-9][0-9 ()-]{6,30}", value.strip()):
             raise ValueError("Enter a valid phone number")
+        return value
+    @field_validator("email")
+    @classmethod
+    def email_format(cls, value: str) -> str:
+        value = value.strip().lower()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
+            raise ValueError("Enter a valid email address")
         return value
     @field_validator("password")
     @classmethod
@@ -70,15 +78,22 @@ class AmbulanceResponse(BaseModel):
 # ── Emergency Requests ────────────────────────────────────────────────────────
 
 class EmergencyRequestCreate(BaseModel):
-    # Kept for dispatcher/temporary workflows only. Ambulance accounts never use it.
+    """A public emergency request, with legacy simulation inputs retained for staff tools."""
+    # Kept for dispatcher/temporary workflows only. Ambulance accounts never use these.
     ambulance_id: Optional[str] = None
-    origin_edge: str
-    destination_edge: str
+    origin_edge: Optional[str] = None
+    destination_edge: Optional[str] = None
     hospital_id: str
-    approach: str = "N"
-    junction_id: str = "J1"
+    approach: Optional[str] = None
+    junction_id: Optional[str] = None
     emergency_mode: str = "EMERGENCY"
     selected_route_id: Optional[str] = None
+    emergency_notes: Optional[str] = Field(None, max_length=2000)
+    origin_latitude: Optional[float] = Field(None, ge=-90, le=90)
+    origin_longitude: Optional[float] = Field(None, ge=-180, le=180)
+    origin_address: Optional[str] = Field(None, max_length=512)
+    origin_city: Optional[str] = Field(None, max_length=128)
+    location_source: Optional[str] = Field(None, pattern="^(GPS|MANUAL)$")
 
 
 class EmergencyRequestResponse(BaseModel):
@@ -94,6 +109,12 @@ class EmergencyRequestResponse(BaseModel):
     status: str
     route_json: Optional[str] = None
     verification_status: str = "REGISTERED"
+    emergency_notes: Optional[str] = None
+    origin_latitude: Optional[float] = None
+    origin_longitude: Optional[float] = None
+    origin_address: Optional[str] = None
+    origin_city: Optional[str] = None
+    location_source: Optional[str] = None
     expires_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
@@ -117,7 +138,15 @@ class LoginRequest(BaseModel):
         return value
 
 class PasswordRecoveryRequest(BaseModel):
-    username: str = Field(..., min_length=2, max_length=128)
+    email: str = Field(..., min_length=3, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def recovery_email_format(cls, value: str) -> str:
+        value = value.strip().lower()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
+            raise ValueError("Enter a valid email address")
+        return value
 
 class PasswordResetRequest(BaseModel):
     token: str = Field(..., min_length=20, max_length=256)
@@ -125,6 +154,17 @@ class PasswordResetRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def reset_password_policy(cls, value: str) -> str:
+        if not re.search(r"[A-Za-z]", value) or not re.search(r"\d", value):
+            raise ValueError("Password must contain at least one letter and one number")
+        return value
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_policy(cls, value: str) -> str:
         if not re.search(r"[A-Za-z]", value) or not re.search(r"\d", value):
             raise ValueError("Password must contain at least one letter and one number")
         return value
@@ -150,8 +190,19 @@ class TokenResponse(BaseModel):
 
 class StaffCreateRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=128)
+    email: Optional[str] = Field(None, min_length=3, max_length=254)
     password: str = Field(..., min_length=10, max_length=128)
     role: str = Field(..., pattern="^(DISPATCHER|ADMIN)$")
+
+    @field_validator("email")
+    @classmethod
+    def staff_email_format(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        value = value.strip().lower()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
+            raise ValueError("Enter a valid email address")
+        return value
 
 
 class StaffUpdateRequest(BaseModel):

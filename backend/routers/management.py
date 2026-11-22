@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
-from backend.config import AUTH_SHOW_RESET_LINKS
+from backend.config import AUTH_SHOW_RESET_LINKS, PASSWORD_RESET_TTL_MINUTES
 from backend.models import AmbulanceRecord, AuditLogRecord, PasswordResetTokenRecord, RequestRecord, TemporaryVerificationRecord, UserRecord
 from backend.schemas import AmbulanceResponse, AuditLogResponse, EmergencyRequestResponse, StaffCreateRequest, StaffUpdateRequest, UserResponse
 from backend.security import current_user, hash_password, require_roles
@@ -73,7 +73,7 @@ async def create_staff(payload: StaffCreateRequest, user: UserRecord = Depends(r
         management_id = _management_id()
         if not (await db.execute(select(UserRecord.id).where(UserRecord.management_id == management_id))).scalar_one_or_none(): break
     else: raise HTTPException(status_code=503, detail="Could not issue management ID")
-    row = UserRecord(id=str(uuid.uuid4()), username=payload.username.strip(), password_hash=hash_password(payload.password), role=payload.role, management_id=management_id, is_active=True)
+    row = UserRecord(id=str(uuid.uuid4()), username=payload.username.strip(), email=payload.email, password_hash=hash_password(payload.password), role=payload.role, management_id=management_id, is_active=True)
     db.add(row)
     try: await db.flush()
     except IntegrityError as exc: raise HTTPException(status_code=409, detail="Username already exists") from exc
@@ -103,7 +103,7 @@ async def staff_reset_link(user_id: str, user: UserRecord = Depends(require_role
     target = (await db.execute(select(UserRecord).where(UserRecord.id == user_id, UserRecord.role.in_(["DISPATCHER", "ADMIN"])))).scalar_one_or_none()
     if not target: raise HTTPException(status_code=404, detail="Staff account not found")
     token = secrets.token_urlsafe(32)
-    db.add(PasswordResetTokenRecord(user_id=target.id, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)))
+    db.add(PasswordResetTokenRecord(user_id=target.id, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=datetime.now(timezone.utc) + timedelta(minutes=PASSWORD_RESET_TTL_MINUTES)))
     _audit(db, user, "staff.password_reset_link_created", target.id)
     response = {"message": "Reset link created; share it through an approved channel."}
     if AUTH_SHOW_RESET_LINKS: response["reset_link"] = f"/reset-password?token={token}"

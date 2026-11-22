@@ -22,6 +22,7 @@ def registration_payload(plate: str) -> dict:
         "service_name": "LifeLane Test EMS",
         "contact_name": "Test Dispatcher",
         "contact_phone": "+923001234567",
+        "email": f"{''.join(char for char in plate.lower() if char.isalnum())}@example.test",
         "vehicle_type": "Advanced Life Support",
         "password": "a-long-test-password-1",
     }
@@ -70,6 +71,14 @@ async def test_registration_issues_unique_public_id_and_login(client):
     assert me.json()["ambulance"]["lifelane_id"] == first["lifelane_id"]
 
 
+async def test_ambulance_can_login_with_registered_phone_number(client):
+    account = await register(client, "KHI-PHONE-01")
+    token = await login(client, "+92 300-1234567", registration_payload("unused")["password"])
+    me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["ambulance"]["lifelane_id"] == account["lifelane_id"]
+
+
 async def test_duplicate_registration_and_failed_transaction_roll_back(client):
     await register(client, "KHI-DUP-01")
     duplicate = await client.post("/api/ambulances/register", json=registration_payload("KHI-DUP-01"))
@@ -110,20 +119,22 @@ async def test_login_generic_failure_and_inactive_account(client):
     assert inactive.status_code == 403
 
 
-async def test_recovery_is_generic_and_reset_is_single_use_and_revokes_sessions(client):
+async def test_recovery_is_generic_and_reset_is_single_use_and_revokes_sessions(client, monkeypatch):
     from backend.database import AsyncSessionLocal
     from backend.models import PasswordResetTokenRecord, UserRecord
-    account = UserRecord(username="reset-staff", password_hash=hash_password("old-password-1"), role="DISPATCHER")
+    account = UserRecord(username="reset-staff", email="reset@example.test", password_hash=hash_password("old-password-1"), role="DISPATCHER")
     async with AsyncSessionLocal() as session:
         session.add(account)
         await session.commit()
         await session.refresh(account)
-        token = secrets.token_urlsafe(32)
-        session.add(PasswordResetTokenRecord(user_id=account.id, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)))
         await session.commit()
-    unknown = await client.post("/api/auth/forgot-password", json={"username": "does-not-exist"})
-    known = await client.post("/api/auth/forgot-password", json={"username": "reset-staff"})
+    sent = []
+    monkeypatch.setattr("backend.routers.auth.send_password_reset_email", lambda recipient, url: sent.append((recipient, url)))
+    unknown = await client.post("/api/auth/forgot-password", json={"email": "does-not-exist@example.test"})
+    known = await client.post("/api/auth/forgot-password", json={"email": "reset@example.test"})
     assert unknown.status_code == known.status_code == 200 and unknown.json() == known.json()
+    assert sent[0][0] == "reset@example.test"
+    token = sent[0][1].split("token=", 1)[1]
     active_token = await login(client, "reset-staff", "old-password-1")
     reset = await client.post("/api/auth/reset-password", json={"token": token, "password": "new-password-2"})
     assert reset.status_code == 200
@@ -133,8 +144,30 @@ async def test_recovery_is_generic_and_reset_is_single_use_and_revokes_sessions(
     assert await login(client, "reset-staff", "new-password-2")
 
 
+async def test_expired_password_reset_token_is_rejected(client):
+    from backend.database import AsyncSessionLocal
+    from backend.models import PasswordResetTokenRecord, UserRecord
+    account = UserRecord(username="expired-staff", email="expired@example.test", password_hash=hash_password("old-password-1"), role="DISPATCHER")
+    token = secrets.token_urlsafe(32)
+    async with AsyncSessionLocal() as session:
+        session.add(account); await session.flush()
+        session.add(PasswordResetTokenRecord(user_id=account.id, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)))
+        await session.commit()
+    response = await client.post("/api/auth/reset-password", json={"token": token, "password": "new-password-2"})
+    assert response.status_code == 400
+
+
+async def test_authenticated_user_can_change_password(client):
+    token = await login(client, "dispatcher", "dispatcher-password")
+    headers = {"Authorization": f"Bearer {token}"}
+    changed = await client.post("/api/auth/change-password", json={"current_password": "dispatcher-password", "new_password": "dispatcher-new-password-2"}, headers=headers)
+    assert changed.status_code == 204
+    assert (await client.get("/api/auth/me", headers=headers)).status_code == 401
+    assert await login(client, "dispatcher", "dispatcher-new-password-2")
+
+
 async def test_recovery_rate_limit(client):
-    responses = [await client.post("/api/auth/forgot-password", json={"username": "rate-limit-user"}) for _ in range(6)]
+    responses = [await client.post("/api/auth/forgot-password", json={"email": "rate-limit@example.test"}) for _ in range(6)]
     assert [response.status_code for response in responses[:-1]] == [200] * 5
     assert responses[-1].status_code == 429
 

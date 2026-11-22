@@ -23,7 +23,7 @@ router = APIRouter(tags=["signals"])
 
 
 @router.get("/signals", response_model=List[JunctionStatus])
-async def list_signals():
+async def list_signals(user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
     svc = get_simulation_service()
     return [JunctionStatus(**j) for j in svc.get_all_junctions()]
 
@@ -49,7 +49,7 @@ async def simulate_signal(junction_id: str, payload: SignalSimulateRequest, user
 
 
 @router.get("/events", response_model=List[EventResponse])
-async def list_events(db: AsyncSession = Depends(get_db)):
+async def list_events(db: AsyncSession = Depends(get_db), user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
     """Return in-memory simulation events (most recent first)."""
     svc = get_simulation_service()
     events = svc.get_events()
@@ -57,7 +57,7 @@ async def list_events(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/stats", response_model=StatsResponse)
-async def get_stats(db: AsyncSession = Depends(get_db)):
+async def get_stats(db: AsyncSession = Depends(get_db), user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
     total_det = (await db.execute(select(func.count()).select_from(DetectionEvent))).scalar() or 0
     siren_det = (await db.execute(
         select(func.count()).select_from(DetectionEvent).where(DetectionEvent.is_siren == True)  # noqa: E712

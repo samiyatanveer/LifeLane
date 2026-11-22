@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { createStaff, decideTemporaryVerification, getAuditLogs, getManagementAmbulances, getManagementOverview, getManagementRequests, getStaff, getTemporaryVerifications } from '../api/management';
+import { createHospital, listHospitals, updateHospital } from '../api/hospitals';
 
-const tabs = ['Overview', 'Ambulance Registry', 'Requests', 'Temporary Verification', 'Traffic & Signals', 'Analytics', 'User Management', 'Activity Logs', 'My Profile'];
+const tabs = ['Overview', 'Ambulance Registry', 'Requests', 'Hospital Management', 'Temporary Verification', 'Traffic & Signals', 'Analytics', 'User Management', 'Activity Logs', 'My Profile'];
 const emptyStaff = { username: '', password: '', role: 'DISPATCHER' };
 
 export default function Management() {
@@ -17,3 +18,12 @@ export default function Management() {
 }
 function Stat({ label, value }) { return <div className="rounded-xl bg-white p-4 shadow-sm"><p className="text-sm text-gray-500">{label}</p><p className="text-3xl font-bold">{value ?? 0}</p></div>; }
 function List({ rows }) { return <div className="mt-5 overflow-auto rounded bg-white"><pre className="p-4 text-xs">{rows?.length ? JSON.stringify(rows, null, 2) : 'No records.'}</pre></div>; }
+
+export function HospitalDirectoryAdmin() {
+  const [items, setItems] = useState([]); const [query, setQuery] = useState(''); const [notice, setNotice] = useState('');
+  const [form, setForm] = useState({ name: '', address: '', city: '', province: 'Punjab', latitude: '', longitude: '', hospital_type: 'General', verification_status: 'UNVERIFIED', is_active: true });
+  const load = async () => { try { setItems((await listHospitals({ q: query, page_size: 100 })).items); } catch (error) { setNotice(error.message); } };
+  useEffect(() => { load(); }, [query]);
+  const save = async event => { event.preventDefault(); try { await createHospital({ ...form, latitude: Number(form.latitude), longitude: Number(form.longitude) }); setNotice('Hospital saved to the shared directory.'); setForm({ ...form, name: '', address: '', city: '', latitude: '', longitude: '' }); load(); } catch (error) { setNotice(error.message); } };
+  return <div className="mt-5 grid gap-5 lg:grid-cols-2"><form onSubmit={save} className="rounded-xl bg-white p-5 shadow-sm"><h2 className="font-bold">Add source-backed hospital</h2>{['name','address','city','latitude','longitude','hospital_type'].map(field => <label key={field} className="mt-2 block text-sm capitalize">{field.replace('_',' ')}<input required value={form[field]} onChange={event => setForm({ ...form, [field]: event.target.value })} className="mt-1 block w-full rounded border p-2" /></label>)}<label className="mt-2 block text-sm">Province<select value={form.province} onChange={event => setForm({ ...form, province: event.target.value })} className="mt-1 block w-full rounded border p-2">{['Punjab','Sindh','Khyber Pakhtunkhwa','Balochistan','Islamabad Capital Territory','Gilgit-Baltistan','Azad Jammu and Kashmir'].map(value => <option key={value}>{value}</option>)}</select></label><button className="mt-4 rounded bg-[#087f5b] px-3 py-2 text-sm font-bold text-white">Save hospital</button>{notice && <p className="mt-3 text-sm">{notice}</p>}</form><div className="rounded-xl bg-white p-5 shadow-sm"><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search hospitals" className="w-full rounded border p-2" />{items.map(item => <div key={item.id} className="mt-2 rounded border p-3 text-sm"><b>{item.name}</b><div>{item.city}, {item.province} · {item.verification_status}</div><button onClick={async () => { await updateHospital(item.id, { is_active: !item.is_active }); load(); }} className="mt-1 text-xs text-[#087f5b]">{item.is_active ? 'Deactivate' : 'Activate'}</button></div>)}</div></div>;
+}

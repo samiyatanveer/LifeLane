@@ -33,7 +33,7 @@ function NavItem({ item, active, onClick }) {
 export function SidebarContent({ onClose }) {
   const location = useLocation();
   const { user, logout } = useAuth(); const navigate = useNavigate();
-  const visibleItems = NAV_ITEMS.filter((item) => !((item.to === '/signals' || item.to === '/ambulances') && !['DISPATCHER', 'ADMIN'].includes(user?.role)));
+  const visibleItems = NAV_ITEMS.filter((item) => !((item.to === '/detection' || item.to === '/signals' || item.to === '/ambulances') && !['DISPATCHER', 'ADMIN'].includes(user?.role)));
 
   return (
     <div className="flex flex-col h-full">

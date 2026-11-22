@@ -1,17 +1,21 @@
 """Authenticated ambulance registry, temporary verification, and dispatch workflow."""
 from __future__ import annotations
+import asyncio
 import hashlib
 import json
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
-from backend.models import AmbulanceRecord, RequestRecord, TemporaryVerificationRecord, UserRecord
+from backend.config import OSRM_BASE_URL, ROUTING_TIMEOUT_SECONDS
+from backend.models import AmbulanceRecord, HospitalRecord, RequestRecord, TemporaryVerificationRecord, UserRecord
 from backend.schemas import (AmbulanceRegisterRequest, AmbulanceResponse, EmergencyRequestCreate,
     EmergencyRequestResponse, RequestStatusUpdate, RouteOption, TemporaryVerificationConfirm,
     TemporaryVerificationResponse, TemporaryVerificationStart, AmbulanceRegistrationResponse)
@@ -33,9 +37,58 @@ def _routes(origin: str, destination: str) -> list[dict]:
         {"id": "alternate", "label": "Alternate bypass", "eta_minutes": 10, "distance_km": 5.1, "junctions": ["J2", "J4"], "recommended": False},
     ]
 
+def _fetch_osrm_route(origin_lat: float, origin_lng: float, destination_lat: float, destination_lng: float) -> dict:
+    """Fetch one real-world driving route without exposing a routing provider to the browser."""
+    url = (
+        f"{OSRM_BASE_URL}/route/v1/driving/"
+        f"{origin_lng},{origin_lat};{destination_lng},{destination_lat}"
+        "?overview=false&steps=false"
+    )
+    request = Request(url, headers={"User-Agent": "LifeLane-route-preview/1.0"})
+    try:
+        with urlopen(request, timeout=ROUTING_TIMEOUT_SECONDS) as response:  # nosec B310: configured routing endpoint
+            data = json.load(response)
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Routing service could not be reached") from exc
+    if data.get("code") != "Ok" or not data.get("routes"):
+        raise RuntimeError("No drivable route was found for these locations")
+    return data["routes"][0]
+
 @router.get("/routes/options", response_model=List[RouteOption])
 async def route_options(origin_edge: str, destination_edge: str, user: UserRecord = Depends(current_user)):
     return _routes(origin_edge, destination_edge)
+
+@router.post("/routes/preview")
+async def route_preview(payload: dict, user: UserRecord = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    """Preview a real-world driving route to an active directory hospital."""
+    hospital_id = payload.get("hospital_id")
+    hospital = (await db.execute(select(HospitalRecord).where(HospitalRecord.id == hospital_id, HospitalRecord.is_active == True))).scalar_one_or_none()
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Selected hospital is unavailable")
+    lat, lng = payload.get("origin_latitude"), payload.get("origin_longitude")
+    if lat is None or lng is None:
+        raise HTTPException(status_code=422, detail="Origin coordinates are required for a location preview")
+    try:
+        origin_lat, origin_lng = float(lat), float(lng)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="Origin coordinates must be valid numbers")
+    if not -90 <= origin_lat <= 90 or not -180 <= origin_lng <= 180:
+        raise HTTPException(status_code=422, detail="Origin coordinates are outside the valid range")
+    try:
+        route = await asyncio.to_thread(_fetch_osrm_route, origin_lat, origin_lng, hospital.latitude, hospital.longitude)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=f"Live routing is temporarily unavailable: {exc}") from exc
+    distance_km = round(float(route["distance"]) / 1000, 1)
+    eta_minutes = max(1, round(float(route["duration"]) / 60))
+    return {
+        "origin": {"latitude": origin_lat, "longitude": origin_lng},
+        "destination": {"id": hospital.id, "name": hospital.name, "latitude": hospital.latitude, "longitude": hospital.longitude},
+        "routing_available": True,
+        "distance_km": distance_km,
+        "eta_minutes": eta_minutes,
+        "provider": "OSRM",
+        "message": f"Driving route to {hospital.name}: {distance_km:.1f} km, approximately {eta_minutes} minutes.",
+    }
 
 @router.get("/ambulances", response_model=List[AmbulanceResponse])
 async def list_ambulances(user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")), db: AsyncSession = Depends(get_db)):
@@ -74,7 +127,7 @@ async def register_ambulance(payload: AmbulanceRegisterRequest, db: AsyncSession
                 contact_phone=payload.contact_phone.strip(), vehicle_type=payload.vehicle_type.strip(), created_at=now)
             db.add(ambulance)
             await db.flush()
-            user = UserRecord(username=lifelane_id, password_hash=hash_password(payload.password), role="AMBULANCE", ambulance_id=ambulance.id)
+            user = UserRecord(username=lifelane_id, email=payload.email, password_hash=hash_password(payload.password), role="AMBULANCE", ambulance_id=ambulance.id)
             db.add(user)
             await db.flush()
             token, expires = await create_token(user, db)
@@ -139,6 +192,21 @@ async def create_request(payload: EmergencyRequestCreate, user: UserRecord = Dep
         raise HTTPException(status_code=403, detail="Cannot dispatch for another ambulance")
     if not ambulance_id:
         raise HTTPException(status_code=422, detail="Ambulance identity is required")
+    hospital = (await db.execute(select(HospitalRecord).where(HospitalRecord.id == payload.hospital_id, HospitalRecord.is_active == True))).scalar_one_or_none()
+    # Existing simulation requests may use historic hospital identifiers. New ambulance requests must use the directory.
+    if user.role == "AMBULANCE" and not hospital and not (payload.origin_edge and payload.destination_edge):
+        raise HTTPException(status_code=422, detail="Select an active hospital from the LifeLane directory")
+    if user.role == "AMBULANCE":
+        if (payload.origin_latitude is None or payload.origin_longitude is None or not payload.location_source) and not (payload.origin_edge and payload.destination_edge):
+            raise HTTPException(status_code=422, detail="Current GPS or manually selected location is required")
+        duplicate = (await db.execute(
+            select(RequestRecord.id).where(
+                RequestRecord.ambulance_id == ambulance_id,
+                RequestRecord.status.in_(["PENDING", "ACTIVE"]),
+            )
+        )).scalar_one_or_none()
+        if duplicate:
+            raise HTTPException(status_code=409, detail="This ambulance already has an active emergency request")
     if ambulance_id.startswith("TMP-"):
         temp = (await db.execute(select(TemporaryVerificationRecord).where(TemporaryVerificationRecord.temporary_id == ambulance_id))).scalar_one_or_none()
         if not temp or temp.status != "VERIFIED" or is_expired(temp.expires_at):
@@ -146,12 +214,19 @@ async def create_request(payload: EmergencyRequestCreate, user: UserRecord = Dep
         verification_status, expires_at = "TEMP_VERIFIED", temp.expires_at
     elif not (await db.execute(select(AmbulanceRecord).where(AmbulanceRecord.lifelane_id == ambulance_id))).scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Registered ambulance not found")
-    chosen = next((route for route in _routes(payload.origin_edge, payload.destination_edge) if route["id"] == (payload.selected_route_id or "fastest")), None)
+    # Internal adapter: the prototype grid remains a simulation-only execution layer.
+    origin_edge = payload.origin_edge or "realworld-origin"
+    destination_edge = payload.destination_edge or "realworld-destination"
+    approach = payload.approach or "N"
+    junction_id = payload.junction_id or "J1"
+    chosen = next((route for route in _routes(origin_edge, destination_edge) if route["id"] == (payload.selected_route_id or "fastest")), None)
     if not chosen: raise HTTPException(status_code=422, detail="Selected route is unavailable")
     now = datetime.now(timezone.utc)
-    record = RequestRecord(id=str(uuid.uuid4()), request_id=_req_id(), ambulance_id=ambulance_id, origin_edge=payload.origin_edge,
-        destination_edge=payload.destination_edge, hospital_id=payload.hospital_id, approach=payload.approach, junction_id=payload.junction_id,
+    record = RequestRecord(id=str(uuid.uuid4()), request_id=_req_id(), ambulance_id=ambulance_id, origin_edge=origin_edge,
+        destination_edge=destination_edge, hospital_id=payload.hospital_id, approach=approach, junction_id=junction_id,
         emergency_mode=payload.emergency_mode, status="PENDING", route_json=json.dumps(chosen), verification_status=verification_status,
+        emergency_notes=payload.emergency_notes, origin_latitude=payload.origin_latitude, origin_longitude=payload.origin_longitude,
+        origin_address=payload.origin_address, origin_city=payload.origin_city, location_source=payload.location_source,
         expires_at=expires_at, created_at=now, updated_at=now)
     db.add(record); await db.flush()
     return EmergencyRequestResponse.model_validate(record)

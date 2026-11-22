@@ -6,13 +6,16 @@ On first backend startup, a simulation dispatcher account is created from enviro
 
 ## Password recovery
 
-LifeLane does not store verified user email addresses and SMTP is not configured, so public recovery cannot send email. Ambulance users must contact LifeLane management. An authenticated `ADMIN` can create a single-use, 30-minute reset link for a staff account; creation is audit logged. Set `AUTH_SHOW_RESET_LINKS=true` only in development to include that link in the API response. In production, share the generated link through an approved staff channel. Relevant environment variables are `AUTH_SECRET`, `AUTH_TOKEN_TTL_MINUTES`, and `AUTH_SHOW_RESET_LINKS`; there are currently no SMTP environment variables because email delivery is not implemented.
+Accounts created through ambulance registration now include a registered email address. `POST /api/auth/forgot-password` accepts that email and always returns the same response, whether or not an account exists. For a matching active account, LifeLane creates a 256-bit single-use token, stores only its SHA-256 hash for 15 minutes, and emails a link to `/reset-password`. `POST /api/auth/reset-password` applies the normal password policy and hashing, consumes the token, and revokes every existing session.
+
+Configure `FRONTEND_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, and `SMTP_USE_TLS` in the backend environment. Secrets must never be added to frontend environment files. SMTP is optional during local development: with `EMAIL_DEV_LOG_LINKS=true` (the default), the reset URL is logged by the backend instead. Existing accounts are preserved by the additive nullable `users.email` migration; they need an email assigned before they can use email recovery.
 
 The database startup migration adds contact and vehicle fields to `ambulances`, route-verification fields to `requests`, and creates `users`, `auth_sessions`, and `temporary_verifications`. It is non-destructive for the existing SQLite database.
 
 Primary API additions:
 
 - `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+- `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`
 - `POST /api/ambulances/register` — issues a LifeLane ID, ambulance account, and bearer token
 - `POST /api/temporary-verifications` and `/confirm` — 10-minute simulation verification
 - `GET /api/routes/options`, `POST /api/requests/{id}/authorize-priority`

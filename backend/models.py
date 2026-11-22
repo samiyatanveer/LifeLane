@@ -60,11 +60,35 @@ class RequestRecord(Base):
     status: Mapped[str] = mapped_column(String(16), default="PENDING", nullable=False)
     route_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     verification_status: Mapped[str] = mapped_column(String(24), default="REGISTERED", nullable=False)
+    emergency_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    origin_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    origin_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    origin_address: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    origin_city: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    location_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
 
 
+class HospitalRecord(Base):
+    """Real-world directory data, deliberately independent from SUMO topology."""
+    __tablename__ = "hospitals"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    address: Mapped[str] = mapped_column(String(512), nullable=False)
+    city: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    province: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    hospital_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    contact_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    verification_status: Mapped[str] = mapped_column(String(24), default="UNVERIFIED", nullable=False, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+    source_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now, nullable=False)
 class SignalEventRecord(Base):
     __tablename__ = "signal_events"
 
@@ -83,6 +107,7 @@ class UserRecord(Base):
     __tablename__ = "users"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     username: Mapped[str] = mapped_column(String(128), unique=True, index=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(String(254), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
     role: Mapped[str] = mapped_column(String(24), nullable=False, default="AMBULANCE")
     management_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
