@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <!-- Vehicle types -->
+    <vType id="ambulance" accel="2.6" decel="4.5" sigma="0.5" length="6" minGap="2.5" maxSpeed="22.2" color="1,1,1" guiShape="emergency"/>
+    <vType id="car"       accel="2.6" decel="4.5" sigma="0.5" length="5" minGap="2.5" maxSpeed="13.9" color="0.5,0.5,0.5" guiShape="passenger"/>
+
+    <!-- Ambulance route: start -> J1 -> J2 -> hospital -->
+    <route id="ambulance_route" edges="e_start_J1 e_J1_J2 e_J2_hospital"/>
+
+    <!-- Background civilian routes -->
+    <route id="cross_J4_J1_J2" edges="e_J4_J1 e_J1_J2 e_J2_hospital"/>
+    <route id="cross_J3_J2_J1" edges="e_J3_J2"/>
+    <route id="loop_J4_J3"     edges="e_J4_J3"/>
+
+    <!-- Ambulance vehicle (departs at t=5) -->
+    <vehicle id="ambulance_1" type="ambulance" route="ambulance_route" depart="5" departSpeed="max"/>
+
+    <!-- Background cars -->
+    <flow id="bg_cross_1" type="car" route="cross_J4_J1_J2" begin="0" end="200" period="8"/>
+    <flow id="bg_cross_2" type="car" route="cross_J3_J2_J1" begin="0" end="200" period="10"/>
+    <flow id="bg_loop_1"  type="car" route="loop_J4_J3"     begin="0" end="200" period="12"/>
+</routes>
