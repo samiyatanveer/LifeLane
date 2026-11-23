@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.config import AUTH_SHOW_RESET_LINKS, PASSWORD_RESET_TTL_MINUTES
-from backend.models import AmbulanceRecord, AuditLogRecord, PasswordResetTokenRecord, RequestRecord, TemporaryVerificationRecord, UserRecord
+from backend.models import AmbulanceRecord, AuditLogRecord, AuthSessionRecord, PasswordResetTokenRecord, RequestRecord, RequestTransitionRecord, TemporaryVerificationRecord, UserRecord
 from backend.schemas import AmbulanceResponse, AuditLogResponse, EmergencyRequestResponse, StaffCreateRequest, StaffUpdateRequest, UserResponse
 from backend.security import current_user, hash_password, require_roles
 
@@ -31,7 +31,7 @@ async def overview(user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN
         stmt = select(func.count()).select_from(model)
         if where is not None: stmt = stmt.where(where)
         return int((await db.execute(stmt)).scalar() or 0)
-    return {"ambulances": await count(AmbulanceRecord), "requests": {"pending": await count(RequestRecord, RequestRecord.status == "PENDING"), "active": await count(RequestRecord, RequestRecord.status == "ACTIVE"), "completed": await count(RequestRecord, RequestRecord.status == "COMPLETED")}, "temporary_verifications": {"pending": await count(TemporaryVerificationRecord, TemporaryVerificationRecord.status == "PENDING"), "verified": await count(TemporaryVerificationRecord, TemporaryVerificationRecord.status == "VERIFIED")}}
+    return {"ambulances": {"registered": await count(AmbulanceRecord), "active": await count(AmbulanceRecord, AmbulanceRecord.status == "ACTIVE")}, "requests": {"pending": await count(RequestRecord, RequestRecord.status.in_(["PENDING", "VALIDATING"])), "active": await count(RequestRecord, RequestRecord.status.in_(["AUTHORIZED", "ROUTE_PREPARATION", "SIGNAL_COORDINATION", "CORRIDOR_READY", "AMBULANCE_PASSAGE"])), "authorized": await count(RequestRecord, RequestRecord.status.in_(["AUTHORIZED", "ROUTE_PREPARATION", "SIGNAL_COORDINATION", "CORRIDOR_READY", "AMBULANCE_PASSAGE"])), "completed": await count(RequestRecord, RequestRecord.status == "COMPLETED"), "failures": await count(RequestRecord, RequestRecord.status.in_(["FAILED", "REJECTED", "CANCELLED", "EXPIRED"])), "alerts": await count(RequestRecord, RequestRecord.status.in_(["ESCALATED", "FAILED"]))}, "temporary_verifications": {"pending": await count(TemporaryVerificationRecord, TemporaryVerificationRecord.status == "PENDING"), "verified": await count(TemporaryVerificationRecord, TemporaryVerificationRecord.status == "VERIFIED")}}
 
 @router.get("/ambulances", response_model=list[AmbulanceResponse])
 async def ambulances(search: str | None = None, status: str | None = None, user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")), db: AsyncSession = Depends(get_db)):
@@ -46,6 +46,12 @@ async def requests(status: str | None = None, ambulance_id: str | None = None, u
     if status: stmt = stmt.where(RequestRecord.status == status)
     if ambulance_id: stmt = stmt.where(RequestRecord.ambulance_id == ambulance_id)
     return [EmergencyRequestResponse.model_validate(row) for row in (await db.execute(stmt)).scalars().all()]
+
+@router.get("/history")
+async def history(limit: int = Query(100, ge=1, le=500), user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")), db: AsyncSession = Depends(get_db)):
+    transitions = (await db.execute(select(RequestTransitionRecord).order_by(RequestTransitionRecord.created_at.desc()).limit(limit))).scalars().all()
+    audits = (await db.execute(select(AuditLogRecord).order_by(AuditLogRecord.created_at.desc()).limit(limit))).scalars().all()
+    return {"transitions": [{"request_id": r.request_id, "from_status": r.from_status, "to_status": r.to_status, "detail": r.detail, "created_at": r.created_at} for r in transitions], "audit_logs": [AuditLogResponse.model_validate(r) for r in audits]}
 
 @router.get("/temporary-verifications")
 async def temporary_verifications(status: str | None = None, user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")), db: AsyncSession = Depends(get_db)):
@@ -108,3 +114,13 @@ async def staff_reset_link(user_id: str, user: UserRecord = Depends(require_role
     response = {"message": "Reset link created; share it through an approved channel."}
     if AUTH_SHOW_RESET_LINKS: response["reset_link"] = f"/reset-password?token={token}"
     return response
+
+@router.post("/ambulance-accounts/{user_id}/reset-password")
+async def reset_ambulance_password(user_id: str, password: str, user: UserRecord = Depends(require_roles("ADMIN")), db: AsyncSession = Depends(get_db)):
+    if len(password) < 10: raise HTTPException(422, "Temporary password must be at least 10 characters")
+    target = (await db.execute(select(UserRecord).where(UserRecord.id == user_id, UserRecord.role == "AMBULANCE"))).scalar_one_or_none()
+    if not target: raise HTTPException(404, "Ambulance account not found")
+    target.password_hash, target.force_password_change = hash_password(password), True
+    await db.execute(AuthSessionRecord.__table__.update().where(AuthSessionRecord.user_id == target.id).values(revoked=True))
+    _audit(db, user, "ambulance.password_reset", target.id)
+    return {"message": "Temporary password assigned; the account must change it after sign-in."}

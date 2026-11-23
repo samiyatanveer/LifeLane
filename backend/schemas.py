@@ -31,7 +31,7 @@ class AmbulanceRegisterRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
     contact_name: str = Field(..., min_length=2, max_length=128)
     contact_phone: str = Field(..., min_length=7, max_length=32)
-    email: str = Field(..., min_length=3, max_length=254)
+    email: Optional[str] = Field(None, min_length=3, max_length=254)
     vehicle_type: str = Field(..., min_length=2, max_length=64)
     @field_validator("registration_number")
     @classmethod
@@ -47,7 +47,9 @@ class AmbulanceRegisterRequest(BaseModel):
         return value
     @field_validator("email")
     @classmethod
-    def email_format(cls, value: str) -> str:
+    def email_format(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
         value = value.strip().lower()
         if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value):
             raise ValueError("Enter a valid email address")
@@ -94,6 +96,14 @@ class EmergencyRequestCreate(BaseModel):
     origin_address: Optional[str] = Field(None, max_length=512)
     origin_city: Optional[str] = Field(None, max_length=128)
     location_source: Optional[str] = Field(None, pattern="^(GPS|MANUAL)$")
+
+    @field_validator("emergency_mode")
+    @classmethod
+    def emergency_mode_allowed(cls, value: str) -> str:
+        value = value.strip().upper()
+        if value not in {"EMERGENCY", "URGENT", "ROUTINE"}:
+            raise ValueError("Emergency type must be EMERGENCY, URGENT, or ROUTINE")
+        return value
 
 
 class EmergencyRequestResponse(BaseModel):

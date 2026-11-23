@@ -98,7 +98,7 @@ export default function Signals() {
           </button>
           <TrafficCone className="w-5 h-5 text-[#087F5B]" />
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-gray-900 text-lg truncate">Signal Control Simulation</h1>
+            <h1 className="font-bold text-gray-900 text-lg truncate">Traffic-priority monitoring</h1>
           </div>
           <button
             onClick={() => { refetchSignals(); refetchEvents(); }}
