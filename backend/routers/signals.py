@@ -16,18 +16,25 @@ from backend.schemas import (
     StatsResponse,
 )
 from backend.services.simulation import get_simulation_service
+from backend.models import UserRecord
+from backend.security import require_roles
 
 router = APIRouter(tags=["signals"])
 
 
 @router.get("/signals", response_model=List[JunctionStatus])
-async def list_signals():
+async def list_signals(user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
     svc = get_simulation_service()
     return [JunctionStatus(**j) for j in svc.get_all_junctions()]
 
 
 @router.post("/signals/{junction_id}/simulate", response_model=SignalStateResponse)
-async def simulate_signal(junction_id: str, payload: SignalSimulateRequest):
+async def simulate_signal(junction_id: str, payload: SignalSimulateRequest, user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
+    if payload.action == "request_priority":
+        raise HTTPException(
+            status_code=403,
+            detail="Priority can only be authorized from a verified emergency request",
+        )
     svc = get_simulation_service()
     try:
         result = svc.simulate_action(
@@ -42,7 +49,7 @@ async def simulate_signal(junction_id: str, payload: SignalSimulateRequest):
 
 
 @router.get("/events", response_model=List[EventResponse])
-async def list_events(db: AsyncSession = Depends(get_db)):
+async def list_events(db: AsyncSession = Depends(get_db), user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
     """Return in-memory simulation events (most recent first)."""
     svc = get_simulation_service()
     events = svc.get_events()
@@ -50,7 +57,7 @@ async def list_events(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/stats", response_model=StatsResponse)
-async def get_stats(db: AsyncSession = Depends(get_db)):
+async def get_stats(db: AsyncSession = Depends(get_db), user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN"))):
     total_det = (await db.execute(select(func.count()).select_from(DetectionEvent))).scalar() or 0
     siren_det = (await db.execute(
         select(func.count()).select_from(DetectionEvent).where(DetectionEvent.is_siren == True)  # noqa: E712
@@ -59,6 +66,12 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     total_req = (await db.execute(select(func.count()).select_from(RequestRecord))).scalar() or 0
     pending_req = (await db.execute(
         select(func.count()).select_from(RequestRecord).where(RequestRecord.status == "PENDING")
+    )).scalar() or 0
+    active_req = (await db.execute(
+        select(func.count()).select_from(RequestRecord).where(RequestRecord.status == "ACTIVE")
+    )).scalar() or 0
+    completed_req = (await db.execute(
+        select(func.count()).select_from(RequestRecord).where(RequestRecord.status == "COMPLETED")
     )).scalar() or 0
 
     svc = get_simulation_service()
@@ -70,6 +83,8 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         total_ambulances=int(total_amb),
         total_requests=int(total_req),
         pending_requests=int(pending_req),
+        active_requests=int(active_req),
+        completed_requests=int(completed_req),
         active_junctions=sim_stats["active_junctions"],
         signal_events=sim_stats["signal_events"],
     )

@@ -6,7 +6,7 @@ from backend.config import ALLOWED_ORIGINS, API_VERSION, PROJECT_NAME
 from backend.database import init_db
 from backend.services.inference import get_inference_service
 from backend.services.simulation import get_simulation_service
-from backend.routers import health, detection, dispatch, signals
+from backend.routers import auth, health, detection, dispatch, signals, management, hospitals
 
 
 @asynccontextmanager
@@ -32,6 +32,9 @@ app.add_middleware(
 )
 # All routers use /api prefix
 app.include_router(health.router, prefix="/api")
+app.include_router(hospitals.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
 app.include_router(detection.router, prefix="/api")
 app.include_router(dispatch.router, prefix="/api")
 app.include_router(signals.router, prefix="/api")
+app.include_router(management.router, prefix="/api")

@@ -4,10 +4,6 @@ import { useHealth } from '../hooks/useHealth';
 export default function Header({ activeTab, setActiveTab }) {
   const { data: health } = useHealth();
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('lifelane-theme') ||
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,14 +15,6 @@ export default function Header({ activeTab, setActiveTab }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
-    document.documentElement.dataset.theme = nextTheme;
-    document.documentElement.style.colorScheme = nextTheme;
-    localStorage.setItem('lifelane-theme', nextTheme);
-  };
 
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -34,7 +22,6 @@ export default function Header({ activeTab, setActiveTab }) {
     { id: 'system', label: 'System' },
     { id: 'live', label: 'Live demo' },
     { id: 'signals', label: 'Signals & Ops' },
-    { id: 'progress', label: 'Progress' },
   ];
 
   const isOnline = health?.status === 'ok';
@@ -135,15 +122,6 @@ export default function Header({ activeTab, setActiveTab }) {
               <span className="text-[11px]">{isOnline ? 'Engine Online' : 'Simulation Mode'}</span>
             </div>
 
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              aria-label="Switch light or dark theme"
-              className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white transition-colors"
-              style={{ fontFamily: '"DM Sans", sans-serif' }}
-            >
-              {theme === 'dark' ? '?? Light' : '?? Dark'}
-            </button>
           </div>
         </div>
       </header>

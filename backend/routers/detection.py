@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.models import DetectionEvent
 from backend.schemas import DetectionResponse
+from backend.models import UserRecord
+from backend.security import require_roles
 from backend.services.inference import get_inference_service
 
 router = APIRouter(tags=["detection"])
@@ -21,6 +23,7 @@ async def detect(
     approach: Optional[str] = Form(None),
     junction_id: str = Form("J1"),
     db: AsyncSession = Depends(get_db),
+    user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")),
 ):
     audio_bytes = await file.read()
     if not audio_bytes:
@@ -58,6 +61,7 @@ async def list_detections(
     junction_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
+    user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")),
     stmt = select(DetectionEvent).order_by(DetectionEvent.created_at.desc())
     if junction_id:
         stmt = stmt.where(DetectionEvent.junction_id == junction_id)
@@ -86,6 +90,7 @@ async def list_detections(
 
 @router.delete("/detections/{detection_id}", status_code=204)
 async def delete_detection(detection_id: str, db: AsyncSession = Depends(get_db)):
+    user: UserRecord = Depends(require_roles("ADMIN")),
     result = await db.execute(
         delete(DetectionEvent).where(DetectionEvent.id == detection_id)
     )

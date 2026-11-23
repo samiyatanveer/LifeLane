@@ -29,6 +29,14 @@ pyyaml>=6.0
 # --- Testing ---
 pytest>=8.0
 pytest-mock>=3.12
+pytest-asyncio>=0.24
+httpx>=0.27
+
+# --- Web API / persistence ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+aiosqlite>=0.20
 
 # --- SUMO Python bindings (Phase 3) ---
 # traci and sumolib are included with the SUMO installation.
@@ -36,9 +44,5 @@ pytest-mock>=3.12
 # eclipse-sumo>=1.19       # uncomment if using pip-installed SUMO
 
 # --- Later phases (do NOT install now) ---
-# fastapi>=0.115           # Phase 8
-# uvicorn[standard]>=0.30  # Phase 8
-# sqlalchemy>=2.0          # Phase 7
 # alembic>=1.13            # Phase 7
 # psycopg2-binary>=2.9     # Phase 7
-
