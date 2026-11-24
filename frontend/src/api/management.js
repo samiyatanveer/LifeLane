@@ -7,3 +7,4 @@ export const decideTemporaryVerification = async (id, approved) => (await client
 export const getStaff = async () => (await client.get('/management/staff')).data;
 export const createStaff = async (payload) => (await client.post('/management/staff', payload)).data;
 export const getAuditLogs = async () => (await client.get('/management/audit-logs')).data;
+export const getManagementHistory = async () => (await client.get('/management/history')).data;

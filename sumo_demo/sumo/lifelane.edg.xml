@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/edges_file.xsd">
+    <!-- Ambulance corridor (horizontal) -->
+    <edge id="e_start_J1"    from="amb_start" to="J1"       numLanes="2" speed="13.9" spreadType="center"/>
+    <edge id="e_J1_J2"       from="J1"        to="J2"       numLanes="2" speed="13.9" spreadType="center"/>
+    <edge id="e_J2_hosp"     from="J2"        to="hospital" numLanes="2" speed="13.9" spreadType="center"/>
+    <!-- Cross traffic vertical -->
+    <edge id="e_north_J1"    from="north_in"  to="J1"       numLanes="2" speed="11.1" spreadType="center"/>
+    <edge id="e_J1_J4"       from="J1"        to="J4"       numLanes="2" speed="11.1" spreadType="center"/>
+    <edge id="e_J4_J1"       from="J4"        to="J1"       numLanes="2" speed="11.1" spreadType="center"/>
+    <edge id="e_south_J3"    from="south_in"  to="J3"       numLanes="2" speed="11.1" spreadType="center"/>
+    <edge id="e_J3_J2"       from="J3"        to="J2"       numLanes="2" speed="11.1" spreadType="center"/>
+    <edge id="e_J2_J3"       from="J2"        to="J3"       numLanes="2" speed="11.1" spreadType="center"/>
+    <!-- Horizontal background -->
+    <edge id="e_J2_J1"       from="J2"        to="J1"       numLanes="1" speed="11.1" spreadType="center"/>
+    <!-- Grid corners -->
+    <edge id="e_J4_J3"       from="J4"        to="J3"       numLanes="2" speed="11.1" spreadType="center"/>
+    <edge id="e_J3_J4"       from="J3"        to="J4"       numLanes="2" speed="11.1" spreadType="center"/>
+</edges>

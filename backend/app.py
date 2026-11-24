@@ -6,6 +6,8 @@ from backend.config import ALLOWED_ORIGINS, API_VERSION, PROJECT_NAME
 from backend.database import init_db
 from backend.services.inference import get_inference_service
 from backend.services.simulation import get_simulation_service
+from backend.database import AsyncSessionLocal
+from backend.services.automated_dispatch import start_worker, stop_worker
 from backend.routers import auth, health, detection, dispatch, signals, management, hospitals
 
 
@@ -14,13 +16,15 @@ async def lifespan(app: FastAPI):
     await init_db()
     get_inference_service().load_or_train()
     get_simulation_service()  # initialize
+    start_worker(AsyncSessionLocal)
     yield
+    await stop_worker()
 
 
 app = FastAPI(
     title=PROJECT_NAME,
     version=API_VERSION,
-    description="LifeLane Smart Ambulance Signal Preemption System - Simulation POC",
+    description="LifeLane automated emergency dispatch and safe traffic-priority coordination platform",
     lifespan=lifespan,
 )
 app.add_middleware(

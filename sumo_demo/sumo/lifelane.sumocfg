@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+    <input>
+        <net-file value="lifelane.net.xml"/>
+        <route-files value="lifelane.rou.xml"/>
+    </input>
+    <time>
+        <begin value="0"/>
+        <end value="400"/>
+        <step-length value="0.5"/>
+    </time>
+    <processing>
+        <ignore-route-errors value="true"/>
+        <!-- Warn on collisions (never teleport to hide them) -->
+        <collision.action value="warn"/>
+        <collision.check-junctions value="true"/>
+        <collision.mingap-factor value="0"/>
+        <!-- Do not let vehicles block junction box -->
+        <no-internal-links value="false"/>
+        <time-to-impatience value="30"/>
+        <!-- Lane change duration prevents abrupt lateral jumps -->
+        <lanechange.duration value="2"/>
+    </processing>
+    <report>
+        <verbose value="false"/>
+        <no-step-log value="true"/>
+    </report>
+    <traci_server>
+        <remote-port value="8813"/>
+    </traci_server>
+</configuration>

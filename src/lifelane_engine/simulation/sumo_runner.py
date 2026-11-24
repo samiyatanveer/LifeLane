@@ -36,6 +36,12 @@ except ImportError:
         "[sumo_runner] TraCI not available — use MockSumoRunner for testing"
     )
 
+# Public compatibility flag used by integration tests and operational checks.
+_SUMO_AVAILABLE = _TRACI_AVAILABLE
+
+# Public compatibility flag used by integration tests and operational checks.
+_SUMO_AVAILABLE = _TRACI_AVAILABLE
+
 # Project-relative paths
 _PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")

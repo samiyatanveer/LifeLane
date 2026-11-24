@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LifeLane — Emergency Preemption Simulator</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#0d1117;color:#e6edf3;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+#ll-app{display:flex;flex-direction:column;width:100%;height:100%}
+
+/* ── Top Panel ── */
+#ll-panel{
+  display:flex;align-items:center;gap:10px;
+  padding:0 16px;height:62px;min-height:62px;
+  background:#161b22;border-bottom:1px solid #30363d;flex-shrink:0;
+}
+#ll-logo{font-size:17px;font-weight:700;color:#58a6ff;white-space:nowrap;letter-spacing:.5px}
+#ll-logo span{color:#ff6b6b}
+#ll-banner{
+  flex:1;text-align:center;font-size:14px;font-weight:600;letter-spacing:.4px;
+  padding:6px 12px;border-radius:6px;transition:background .4s,color .4s;
+  background:#21262d;color:#8b949e;
+}
+#ll-banner.warn{background:#3d1f00;color:#f0883e;animation:blink 1s infinite alternate}
+#ll-banner.ok{background:#0d2818;color:#3fb950}
+#ll-banner.info{background:#1a2332;color:#58a6ff}
+@keyframes blink{from{opacity:1}to{opacity:.55}}
+.ll-ctrl-grp{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ll-label{font-size:11px;color:#8b949e;white-space:nowrap}
+#ll-speed{width:80px;accent-color:#58a6ff}
+#ll-spd-lbl{font-size:12px;color:#58a6ff;min-width:28px}
+button.ll-btn{
+  padding:6px 14px;border:none;border-radius:6px;font-size:13px;font-weight:600;
+  cursor:pointer;transition:opacity .15s,transform .1s;
+}
+button.ll-btn:active{transform:scale(.96)}
+button.ll-btn:disabled{opacity:.35;cursor:default}
+#ll-btn-pause{background:#2d333b;color:#cdd9e5}
+#ll-btn-start{background:#1f6feb;color:#fff}
+#ll-btn-reset{background:#2d333b;color:#cdd9e5}
+
+/* ── Body ── */
+#ll-body{display:flex;flex:1;overflow:hidden}
+#ll-cvs-wrap{flex:1;position:relative;overflow:hidden}
+#ll-cvs{display:block;width:100%;height:100%}
+
+/* ── Dashboard ── */
+#ll-dash{
+  width:258px;min-width:258px;background:#161b22;border-left:1px solid #30363d;
+  overflow-y:auto;padding:10px 10px 16px;display:flex;flex-direction:column;gap:8px;
+}
+.d-sec{background:#21262d;border-radius:8px;padding:10px 11px}
+.d-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#8b949e;margin-bottom:8px}
+.d-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:5px}
+.d-row:last-child{margin-bottom:0}
+.d-key{color:#8b949e}
+.d-val{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums}
+.d-val.green{color:#3fb950}
+.d-val.red{color:#f85149}
+.d-val.yellow{color:#d29922}
+#ds-cbar-wrap{margin-top:4px}
+.cbar-bg{height:8px;background:#2d333b;border-radius:4px;overflow:hidden}
+#ds-cbar{height:100%;width:0%;background:#3fb950;border-radius:4px;transition:width .4s}
+#ds-cpct{font-size:11px;color:#3fb950;font-weight:700;margin-top:3px;text-align:right}
+.eta-row{display:flex;align-items:center;gap:7px;margin-bottom:6px;font-size:12px}
+.eta-row:last-child{margin-bottom:0}
+.eta-jlbl{width:22px;color:#8b949e;font-weight:700}
+.eta-bar-bg{flex:1;height:7px;background:#2d333b;border-radius:3px;overflow:hidden}
+.eta-bar{height:100%;width:0%;border-radius:3px;transition:width .5s}
+.eta-bar.waiting{background:#58a6ff}
+.eta-bar.passed{background:#3fb950}
+.eta-bar.active{background:#f0883e;animation:pulse-bar .7s infinite alternate}
+@keyframes pulse-bar{from{opacity:1}to{opacity:.5}}
+.eta-s{width:36px;text-align:right;color:#cdd9e5;font-weight:600;font-variant-numeric:tabular-nums}
+.js-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px}
+.js-row:last-child{margin-bottom:0}
+.js-lbl{width:22px;color:#8b949e;font-weight:700}
+.sig-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sig-dot.green{background:#3fb950;box-shadow:0 0 5px #3fb950}
+.sig-dot.yellow{background:#d29922;box-shadow:0 0 5px #d29922}
+.sig-dot.red{background:#f85149;box-shadow:0 0 5px #f85149}
+.js-state{color:#cdd9e5;flex:1}
+.js-row .cross-dot{margin-left:3px}
+#ll-dash::-webkit-scrollbar{width:4px}
+#ll-dash::-webkit-scrollbar-track{background:#0d1117}
+#ll-dash::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+</style>
+</head>
+<body>
+<div id="ll-app">
+  <div id="ll-panel">
+    <div id="ll-logo">Life<span>Lane</span></div>
+    <div id="ll-banner">Normal Operation</div>
+    <div class="ll-ctrl-grp">
+      <span class="ll-label">Speed</span>
+      <input type="range" id="ll-speed" min="0.5" max="2" step="0.25" value="1"/>
+      <span id="ll-spd-lbl">1×</span>
+    </div>
+    <div class="ll-ctrl-grp">
+      <button class="ll-btn" id="ll-btn-pause">Pause</button>
+      <button class="ll-btn" id="ll-btn-start">▶ Start Simulation</button>
+      <button class="ll-btn" id="ll-btn-reset">Reset</button>
+    </div>
+  </div>
+  <div id="ll-body">
+    <div id="ll-cvs-wrap"><canvas id="ll-cvs"></canvas></div>
+    <div id="ll-dash">
+      <div class="d-sec">
+        <div class="d-sec-title">🚑 Live Telemetry</div>
+        <div class="d-row"><span class="d-key">Ambulance Speed</span><span class="d-val" id="ds-speed">— km/h</span></div>
+        <div class="d-row"><span class="d-key">Next Junction</span><span class="d-val" id="ds-next">—</span></div>
+        <div class="d-row"><span class="d-key">Distance</span><span class="d-val" id="ds-dist">—</span></div>
+        <div class="d-row"><span class="d-key">ETA</span><span class="d-val" id="ds-eta-n">— s</span></div>
+        <div class="d-row"><span class="d-key">Siren</span><span class="d-val green" id="ds-siren">Inactive</span></div>
+        <div id="ds-cbar-wrap">
+          <div class="d-row" style="margin-bottom:3px">
+            <span class="d-key">ML Detection</span><span class="d-val green" id="ds-mlstat">—</span>
+          </div>
+          <div class="cbar-bg"><div id="ds-cbar"></div></div>
+          <div id="ds-cpct">—</div>
+        </div>
+      </div>
+      <div class="d-sec">
+        <div class="d-sec-title">⏱ ETA Timeline</div>
+        <div id="ds-eta-list">
+          <div class="eta-row"><span class="eta-jlbl">J1</span><div class="eta-bar-bg"><div class="eta-bar waiting" id="eta-bar-0"></div></div><span class="eta-s" id="eta-s-0">—</span></div>
+          <div class="eta-row"><span class="eta-jlbl">J2</span><div class="eta-bar-bg"><div class="eta-bar waiting" id="eta-bar-1"></div></div><span class="eta-s" id="eta-s-1">—</span></div>
+          <div class="eta-row"><span class="eta-jlbl">J3</span><div class="eta-bar-bg"><div class="eta-bar waiting" id="eta-bar-2"></div></div><span class="eta-s" id="eta-s-2">—</span></div>
+        </div>
+      </div>
+      <div class="d-sec">
+        <div class="d-sec-title">🚦 Junction States</div>
+        <div id="ds-jstates">
+          <div class="js-row"><span class="js-lbl">J1</span><div class="sig-dot red" id="js-m-0"></div><div class="sig-dot red cross-dot" id="js-c-0"></div><span class="js-state" id="js-st-0">Normal</span></div>
+          <div class="js-row"><span class="js-lbl">J2</span><div class="sig-dot red" id="js-m-1"></div><div class="sig-dot red cross-dot" id="js-c-1"></div><span class="js-state" id="js-st-1">Normal</span></div>
+          <div class="js-row"><span class="js-lbl">J3</span><div class="sig-dot red" id="js-m-2"></div><div class="sig-dot red cross-dot" id="js-c-2"></div><span class="js-state" id="js-st-2">Normal</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function mountTrafficDemo(container, options) {
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §1  CONFIGURATION  — all tunables here
+// ═══════════════════════════════════════════════════════════════════════════
+// §1a STRICT_ONE_GREEN — when true, only ONE approach (main OR cross) may be
+//     non-red at any moment. This matches the backend STRICT_ONE_GREEN=True rule.
+//     The 6-phase FSM below already guarantees this; this flag documents the intent
+//     and can be audited: if false, opposing through-movements share green (not used here).
+const STRICT_ONE_GREEN = true;
+
+const CFG = Object.assign({
+  // Signal timing (seconds) — keep in sync with backend NORMAL_* constants
+  GREEN_TIME           : 15,   // was 8 — matches backend NORMAL_GREEN_TIME=15
+  YELLOW_TIME          : 3,    // was 2 — matches backend NORMAL_YELLOW_TIME=3
+  ALL_RED_TIME         : 2.0,  // matches backend NORMAL_ALLRED_TIME=2
+  VEHICLE_CLEAR_BUFFER : 2.5,  // extra time budget so signal is green well before arrival
+  SAFETY_BUFFER        : 2.0,
+  CLEARANCE_HOLD       : 2.5,  // hold green after ambulance rear clears junction
+
+  // Ambulance (dedicated inner east lane; never stops)
+  AMB_SPEED : 65,   // px/s cruise speed
+  AMB_ACCEL : 50,   // px/s² ramp-up acceleration
+  AMB_W     : 32,
+  AMB_H     : 15,
+
+  // Regular cars
+  CAR_SPEED_MIN : 36,
+  CAR_SPEED_MAX : 60,
+  CAR_ACCEL     : 60,
+  CAR_DECEL     : 160,
+  SAFE_GAP      : 8,    // minimum bumper-to-bumper gap (px)
+  LOOKAHEAD     : 190,  // braking horizon (px)
+  CAR_SPAWN_MS  : 2200, // ms between spawns per lane
+  CAR_W         : 17,
+  CAR_H         : 10,
+
+  // Road geometry (all in px)
+  ROAD_W      : 84,   // total main road width  (4 lanes × 21 px)
+  LANE_W      : 21,   // one lane width
+  SIDE_W      : 42,   // total side road width  (2 lanes × 21 px)
+  SIDE_LANE_W : 21,
+  CURB_W      : 10,   // sidewalk / kerb width
+  SL_MARGIN   : 7,    // stop-line set-back from junction box edge (px)
+  ZEBRA_DEPTH : 46,   // pedestrian-crossing depth (px)
+  ARROW_DIST  : 70,   // px before stop line to draw direction arrow
+}, options || {});
+
+// Detection radius computed from ambulance speed & signal timing:
+// ambulance must be detected early enough that signal turns green BEFORE arrival
+function detectRadius() {
+  return CFG.AMB_SPEED *
+    (CFG.YELLOW_TIME + CFG.ALL_RED_TIME + CFG.VEHICLE_CLEAR_BUFFER + CFG.SAFETY_BUFFER);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §2  DATA SOURCE ADAPTER  — swap getAmbulanceState/getJunctionETAs for real ML
+// ═══════════════════════════════════════════════════════════════════════════
+let DataSource = {
+  // ← PLUG IN ML MODEL: replace with real API call
+  getAmbulanceState() {
+    if (!amb || !amb.active) return null;
+    const nextJ = junctions.find(j => !j.ambPassed);
+    const dist  = nextJ ? Math.max(0, nextJ.x - (amb.x + CFG.AMB_W/2)) : 9999;
+    const spxs  = amb.vx * simSpeed;
+    const kmh   = spxs * 0.36;
+    const eta_s = spxs > 1 ? dist / spxs : null;
+    const conf  = amb.sirenOn ? (85 + Math.random() * 14.9) : 0;
+    return { speed_kmh: kmh, sirenDetected: amb.sirenOn, confidence: conf,
+             nextJunctionId: nextJ ? nextJ.label : '—', distToNext: dist, etaToNext: eta_s };
+  },
+  // ← PLUG IN ML MODEL: replace with ETA prediction API
+  getJunctionETAs() {
+    if (!amb || !amb.active)
+      return junctions.map(j => ({ label: j.label, eta_s: null, passed: j.ambPassed }));
+    const spxs = Math.max(1, amb.vx * simSpeed);
+    return junctions.map(j => ({
+      label: j.label,
+      eta_s: j.ambPassed ? null : Math.max(0, j.x - (amb.x + CFG.AMB_W/2)) / spxs,
+      passed: j.ambPassed,
+    }));
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §3  CANVAS GLOBALS
+// ═══════════════════════════════════════════════════════════════════════════
+const cvs = container.querySelector('#ll-cvs');
+const ctx = cvs.getContext('2d');
+let W = 0, H = 0;
+let simTime = 0, simSpeed = 1, paused = false, running = false;
+let raf = null, lastTs = null;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §4  SIGNAL ENGINE  — 6-phase cycle (never conflicting greens)
+// ═══════════════════════════════════════════════════════════════════════════
+//  Phase 0: main=green,  cross=red    — GREEN_TIME
+//  Phase 1: main=yellow, cross=red    — YELLOW_TIME
+//  Phase 2: main=red,    cross=red    — ALL_RED_TIME   (junction clears)
+//  Phase 3: main=red,    cross=green  — GREEN_TIME
+//  Phase 4: main=red,    cross=yellow — YELLOW_TIME
+//  Phase 5: main=red,    cross=red    — ALL_RED_TIME   (junction clears)
+const PHASE_DUR  = [CFG.GREEN_TIME, CFG.YELLOW_TIME, CFG.ALL_RED_TIME,
+                    CFG.GREEN_TIME, CFG.YELLOW_TIME, CFG.ALL_RED_TIME];
+const FULL_CYCLE = PHASE_DUR.reduce((a,b) => a+b, 0);
+const PHASE_CUM  = (() => { const c=[0]; PHASE_DUR.forEach(d=>c.push(c[c.length-1]+d)); return c; })();
+const PHASE_SIGS = [
+  ['green','red'], ['yellow','red'], ['red','red'],
+  ['red','green'], ['red','yellow'], ['red','red'],
+];
+
+function phaseAt(t) {
+  const p = ((t % FULL_CYCLE) + FULL_CYCLE) % FULL_CYCLE;
+  for (let i = 0; i < 6; i++) if (p < PHASE_CUM[i+1]) return i;
+  return 5;
+}
+function sigsAt(t) { return PHASE_SIGS[phaseAt(t)]; }
+
+// ── Per-junction phase offsets ─────────────────────────────────────────────
+// Stagger junctions so they're in DIFFERENT phases when demo starts.
+// J1 → starts in cross=green (phase 3), so the user sees cross-traffic clearing.
+// J2 → starts in main=green  (phase 0), already ready for the ambulance.
+// J3 → starts in cross=green (phase 3), so another clearing sequence is visible.
+// PHASE_CUM[3] = 11.5 s  (start of cross-green phase)
+// Using simTime = 0 and per-junction offset:
+//   sigsAt(0 + 11.5) = phase 3 (cross=green)
+//   sigsAt(0 +  0  ) = phase 0 (main=green)
+const J_PHASE_OFFSET = [PHASE_CUM[3], 0, PHASE_CUM[3]];  // indexed by junction.index
+
+const PSTATE = {
+  NORMAL       : 'NORMAL',
+  CROSS_YELLOW : 'CROSS_YELLOW',
+  PRE_ALL_RED  : 'PRE_ALL_RED',
+  SERVING      : 'SERVING',
+  HOLD         : 'HOLD',
+  RESUME_YELLOW: 'RESUME_YELLOW',
+  RESUME_ALLRED: 'RESUME_ALLRED',
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §5  GEOMETRY & STOP LINES
+// ═══════════════════════════════════════════════════════════════════════════
+let junctions = [], cars = [], amb = null, burstRings = [], spawnTimers = {};
+
+function mainY() { return H / 2; }
+
+// ── Main road lane Y centres ──────────────────────────────────────────────
+// Layout (top→bottom):  [sidewalk] [east-outer] [east-inner/AMB] | [west-inner] [west-outer] [sidewalk]
+// ROAD_W = 4 × LANE_W;  median / double-yellow at mainY
+function ambLaneY()      { return mainY() - CFG.LANE_W * 0.5; } // inner east — AMBULANCE ONLY
+function carEastY()      { return mainY() - CFG.LANE_W * 1.5; } // outer east — regular cars
+function carWestInnerY() { return mainY() + CFG.LANE_W * 0.5; }
+function carWestOuterY() { return mainY() + CFG.LANE_W * 1.5; }
+
+// ── Side road lane X centres ──────────────────────────────────────────────
+// Layout (left→right):  [sidewalk] [south-going] | [north-going] [sidewalk]
+function carSouthX(j) { return j.x - CFG.SIDE_LANE_W * 0.5; }
+function carNorthX(j) { return j.x + CFG.SIDE_LANE_W * 0.5; }
+
+// ── Stop lines ────────────────────────────────────────────────────────────
+// Junction box horizontal extent = SIDE_W/2 each side from j.x
+// Junction box vertical extent   = ROAD_W/2 each side from j.y
+function slEast(i)  { return junctions[i].x - CFG.SIDE_W/2 - CFG.SL_MARGIN; } // eastbound stop (cars →)
+function slWest(i)  { return junctions[i].x + CFG.SIDE_W/2 + CFG.SL_MARGIN; } // westbound stop (cars ←)
+function slSouth(i) { return junctions[i].y - CFG.ROAD_W/2 - CFG.SL_MARGIN; } // southbound stop (↓)
+function slNorth(i) { return junctions[i].y + CFG.ROAD_W/2 + CFG.SL_MARGIN; } // northbound stop (↑)
+
+function resize() {
+  const wrap = container.querySelector('#ll-cvs-wrap');
+  W = wrap.clientWidth; H = wrap.clientHeight;
+  cvs.width = W; cvs.height = H;
+}
+
+function initGeometry() {
+  resize();
+  const xs = [W*0.25, W*0.5, W*0.75];
+  junctions = xs.map((x, i) => {
+    // Initialise signals to match starting phase for this junction's offset
+    const [ms, cs] = sigsAt(J_PHASE_OFFSET[i]);
+    return {
+      x, y: mainY(), label: `J${i+1}`, index: i,
+      mainSig: ms, crossSig: cs,
+      pState: PSTATE.NORMAL, pTimer: 0,
+      ambPassed: false, statusText: 'Normal', highlight: false, passedFlash: 0,
+    };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §6  VEHICLE ENGINE  — car-following model, strict lanes
+// ═══════════════════════════════════════════════════════════════════════════
+let carIdSeq = 0;
+
+// All spawnable lanes (ambulance lane excluded from regular cars)
+const ALL_LANES = ['east','west_inner','west_outer',
+                   'south_0','south_1','south_2',
+                   'north_0','north_1','north_2'];
+
+function mkCar(laneKey, speed) {
+  const my = mainY();
+  let x, y, bvx=0, bvy=0, jIdx=-1;
+  if (laneKey === 'east') {
+    x=-CFG.CAR_W;    y=carEastY();      bvx= 1;
+  } else if (laneKey === 'west_inner') {
+    x=W+CFG.CAR_W;   y=carWestInnerY(); bvx=-1;
+  } else if (laneKey === 'west_outer') {
+    x=W+CFG.CAR_W;   y=carWestOuterY(); bvx=-1;
+  } else if (laneKey.startsWith('south_')) {
+    jIdx = +laneKey.slice(6);
+    if (jIdx >= junctions.length) return null;
+    const j = junctions[jIdx];
+    x=carSouthX(j); y=-CFG.CAR_H; bvy=1;
+  } else if (laneKey.startsWith('north_')) {
+    jIdx = +laneKey.slice(6);
+    if (jIdx >= junctions.length) return null;
+    const j = junctions[jIdx];
+    x=carNorthX(j); y=H+CFG.CAR_H; bvy=-1;
+  }
+  return {
+    id:++carIdSeq, lane:laneKey, x, y, bvx, bvy,
+    vx:bvx*speed, vy:bvy*speed, baseSpeed:speed, jIdx,
+    w:CFG.CAR_W, h:CFG.CAR_H,
+    color:`hsl(${200+(Math.random()*140)|0},55%,${(52+Math.random()*18)|0}%)`,
+  };
+}
+
+function spawnCars(dt) {
+  for (const lane of ALL_LANES) {
+    if (spawnTimers[lane] == null) spawnTimers[lane] = Math.random()*CFG.CAR_SPAWN_MS;
+    spawnTimers[lane] -= dt * 1000;
+    if (spawnTimers[lane] <= 0) {
+      spawnTimers[lane] = CFG.CAR_SPAWN_MS + (Math.random()-0.5)*700;
+      const speed = CFG.CAR_SPEED_MIN + Math.random()*(CFG.CAR_SPEED_MAX-CFG.CAR_SPEED_MIN);
+      const c = mkCar(lane, speed);
+      if (c && !carBlockedAtSpawn(c)) cars.push(c);
+    }
+  }
+}
+
+function carBlockedAtSpawn(c) {
+  for (const o of cars)
+    if (Math.abs(c.x-o.x) < CFG.CAR_W+2 && Math.abs(c.y-o.y) < CFG.CAR_H+2) return true;
+  return false;
+}
+
+// Returns { minDist, hardStop } — distance from car front to nearest obstacle
+function nearestObstacle(car) {
+  let minDist=Infinity, hardStop=Infinity;
+  const isH = Math.abs(car.bvx) > 0.5;
+
+  // Junctions to check: horizontal cars check all; vertical cars check only their own side road
+  const jCheck = isH ? junctions : (car.jIdx >= 0 ? [junctions[car.jIdx]] : []);
+
+  for (const j of jCheck) {
+    if (isH) {
+      if (car.bvx > 0) {
+        // Eastbound → check slEast
+        const sl = slEast(j.index), sig = j.mainSig;
+        if (sig==='red'||sig==='yellow') {
+          const d = sl - (car.x + car.w/2);
+          // Only brake while car's FRONT has not yet crossed the stop line (d > 0).
+          // Once past the stop line the car is committed — it clears the box naturally.
+          if (d > 0 && d < minDist) { minDist=d; hardStop=sl-car.w/2; }
+        }
+      } else {
+        // Westbound ← check slWest
+        const sl = slWest(j.index), sig = j.mainSig;
+        if (sig==='red'||sig==='yellow') {
+          const d = (car.x - car.w/2) - sl;
+          if (d > 0 && d < minDist) { minDist=d; hardStop=sl+car.w/2; }
+        }
+      }
+    } else {
+      if (car.bvy > 0) {
+        // Southbound ↓ check slSouth
+        const sl = slSouth(j.index), sig = j.crossSig;
+        if (sig==='red'||sig==='yellow') {
+          const d = sl - (car.y + car.h/2);
+          if (d > 0 && d < minDist) { minDist=d; hardStop=sl-car.h/2; }
+        }
+      } else {
+        // Northbound ↑ check slNorth
+        const sl = slNorth(j.index), sig = j.crossSig;
+        if (sig==='red'||sig==='yellow') {
+          const d = (car.y - car.h/2) - sl;
+          if (d > 0 && d < minDist) { minDist=d; hardStop=sl+car.h/2; }
+        }
+      }
+    }
+  }
+
+  // Leading car in same lane
+  for (const o of cars) {
+    if (o===car || o.bvx!==car.bvx || o.bvy!==car.bvy) continue;
+    if (isH) {
+      if (Math.abs(o.y - car.y) > CFG.LANE_W * 0.55) continue; // different lane
+      if (car.bvx > 0) {
+        const gap = (o.x-o.w/2) - (car.x+car.w/2);
+        if (gap>-2 && gap<minDist) { minDist=gap; hardStop=(o.x-o.w/2)-car.w/2; }
+      } else {
+        const gap = (car.x-car.w/2) - (o.x+o.w/2);
+        if (gap>-2 && gap<minDist) { minDist=gap; hardStop=(o.x+o.w/2)+car.w/2; }
+      }
+    } else {
+      if (Math.abs(o.x - car.x) > CFG.SIDE_LANE_W * 0.55) continue;
+      if (car.bvy > 0) {
+        const gap = (o.y-o.h/2) - (car.y+car.h/2);
+        if (gap>-2 && gap<minDist) { minDist=gap; hardStop=(o.y-o.h/2)-car.h/2; }
+      } else {
+        const gap = (car.y-car.h/2) - (o.y+o.h/2);
+        if (gap>-2 && gap<minDist) { minDist=gap; hardStop=(o.y+o.h/2)+car.h/2; }
+      }
+    }
+  }
+  return { minDist, hardStop };
+}
+
+function tgtSpeed(baseSpeed, minDist) {
+  if (minDist < 0)            return 0;
+  if (minDist < CFG.SAFE_GAP) return 0;
+  if (minDist < CFG.LOOKAHEAD)
+    return Math.sqrt((minDist-CFG.SAFE_GAP) / (CFG.LOOKAHEAD-CFG.SAFE_GAP)) * baseSpeed;
+  return baseSpeed;
+}
+
+function updateCars(dt) {
+  for (const car of cars) {
+    const { minDist, hardStop } = nearestObstacle(car);
+    const tgt = tgtSpeed(car.baseSpeed, minDist);
+    const curSpd = Math.sqrt(car.vx*car.vx + car.vy*car.vy);
+    const dv = tgt - curSpd;
+    const acc = dv > 0 ? CFG.CAR_ACCEL : -CFG.CAR_DECEL;
+    const spd = Math.max(0, Math.min(car.baseSpeed, curSpd + acc*dt));
+    car.vx = car.bvx * spd;
+    car.vy = car.bvy * spd;
+    car.x += car.vx * dt;
+    car.y += car.vy * dt;
+
+    // Hard clamp: snap car to stop position and zero velocity
+    if (minDist <= 1 && hardStop < Infinity) {
+      if (car.bvx > 0) car.x = Math.min(car.x, hardStop);
+      if (car.bvx < 0) car.x = Math.max(car.x, hardStop);
+      if (car.bvy > 0) car.y = Math.min(car.y, hardStop);
+      if (car.bvy < 0) car.y = Math.max(car.y, hardStop);
+      car.vx = 0; car.vy = 0;
+    }
+  }
+  cars = cars.filter(c => c.x>-300 && c.x<W+300 && c.y>-300 && c.y<H+300);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §7  AMBULANCE  — dedicated inner east lane; NEVER stops at signals
+// ═══════════════════════════════════════════════════════════════════════════
+function spawnAmbulance() {
+  amb = {
+    x:-CFG.AMB_W, y:ambLaneY(),
+    bvx:1, bvy:0, vx:0, vy:0,
+    active:true, sirenOn:true,
+    pulseR:0, pulseAlpha:0,
+  };
+}
+
+function updateAmbulance(dt) {
+  if (!amb || !amb.active) return;
+
+  // Smooth ramp-up; cruise at AMB_SPEED — no stop-line checks (signal is always
+  // cleared in advance by the early detection radius).
+  amb.vx = Math.min(CFG.AMB_SPEED, amb.vx + CFG.AMB_ACCEL*dt);
+  amb.x += amb.vx * dt;
+
+  // Siren pulse rings
+  amb.pulseR += 70*dt;
+  if (amb.pulseR > 100) amb.pulseR = 0;
+  amb.pulseAlpha = Math.max(0, 1 - amb.pulseR/100);
+
+  // Trigger preemption when ambulance enters detection radius
+  const dr = detectRadius();
+  for (const j of junctions) {
+    if (j.ambPassed || j.pState !== PSTATE.NORMAL) continue;
+    const dist = j.x - (amb.x + CFG.AMB_W/2);
+    if (dist < dr && dist > -CFG.SIDE_W/2) triggerPreemption(j);
+  }
+
+  // Ambulance rear fully past the junction → start HOLD countdown
+  for (const j of junctions) {
+    if (j.ambPassed) continue;
+    if (j.pState === PSTATE.SERVING) {
+      const rear   = amb.x - CFG.AMB_W/2;
+      const jRight = j.x + CFG.SIDE_W/2;
+      if (rear > jRight + 4) { j.pState = PSTATE.HOLD; j.pTimer = CFG.CLEARANCE_HOLD; }
+    }
+  }
+
+  // Exited screen
+  if (amb.x > W + CFG.AMB_W + 20) {
+    amb.active=false; amb.sirenOn=false;
+    setBanner('Normal Operation Restored','ok');
+    container.querySelector('#ll-btn-start').disabled = false;
+    running=false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §8  PREEMPTION FSM  — per junction, proper transitions, junction-clear check
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Returns true if any car body overlaps the junction box (intersection area).
+// Used to hold all-red until the box is physically clear before giving amb green.
+function junctionHasTraffic(j) {
+  const jx1 = j.x - CFG.SIDE_W/2 - 2, jx2 = j.x + CFG.SIDE_W/2 + 2;
+  const jy1 = j.y - CFG.ROAD_W/2 - 2, jy2 = j.y + CFG.ROAD_W/2 + 2;
+  for (const c of cars) {
+    // Check if car body overlaps junction rectangle
+    if (c.x + c.w/2 > jx1 && c.x - c.w/2 < jx2 &&
+        c.y + c.h/2 > jy1 && c.y - c.h/2 < jy2) return true;
+  }
+  return false;
+}
+
+function triggerPreemption(j) {
+  // Entry logic based on current signal state:
+  //   main=green  → signal is already safe for ambulance, go to SERVING
+  //   cross=green → cross traffic must stop: yellow → all-red → then serve
+  //   cross=yellow→ already in transition, just finish all-red → serve
+  //   any other   → go straight to all-red clearance → serve
+  if (j.mainSig === 'green' && j.crossSig === 'red') {
+    // Main already green, cross already red — but wait for any car that entered
+    // the junction on cross-green to clear (use a brief all-red if box occupied).
+    if (junctionHasTraffic(j)) {
+      j.pState = PSTATE.PRE_ALL_RED;
+      j.pTimer = CFG.ALL_RED_TIME;
+      j.mainSig = 'red'; j.crossSig = 'red';
+    } else {
+      j.pState = PSTATE.SERVING;
+      // signals already correct (main=green, cross=red)
+    }
+  } else if (j.crossSig === 'green') {
+    j.pState  = PSTATE.CROSS_YELLOW;
+    j.pTimer  = CFG.YELLOW_TIME;
+    j.crossSig = 'yellow'; j.mainSig = 'red';
+  } else if (j.crossSig === 'yellow') {
+    j.pState  = PSTATE.PRE_ALL_RED;
+    j.pTimer  = CFG.ALL_RED_TIME;
+    j.crossSig = 'red'; j.mainSig = 'red';
+  } else {
+    // main=yellow, any all-red, or other: force all-red then serve
+    j.pState  = PSTATE.PRE_ALL_RED;
+    j.pTimer  = CFG.ALL_RED_TIME;
+    j.mainSig = 'red'; j.crossSig = 'red';
+  }
+  j.highlight = true;
+  j.statusText = 'Preemption triggered';
+}
+
+function updatePreemption(j, dt) {
+  if (j.pState === PSTATE.NORMAL) {
+    // Normal 6-phase cycle with per-junction phase offset for staggered starts
+    const [ms, cs] = sigsAt(simTime + J_PHASE_OFFSET[j.index]);
+    j.mainSig = ms; j.crossSig = cs;
+    j.highlight = false; j.statusText = 'Normal';
+    return;
+  }
+  j.pTimer -= dt;
+  switch (j.pState) {
+
+    case PSTATE.CROSS_YELLOW:
+      // Cross traffic sees yellow — cars approaching cross stop-line must brake.
+      // Cars already past the stop-line clear the box naturally.
+      j.crossSig = 'yellow'; j.mainSig = 'red';
+      j.statusText = 'Cross traffic: yellow…';
+      if (j.pTimer <= 0) {
+        j.pState   = PSTATE.PRE_ALL_RED;
+        j.pTimer   = CFG.ALL_RED_TIME;
+        j.crossSig = 'red';
+      }
+      break;
+
+    case PSTATE.PRE_ALL_RED:
+      // All signals red — wait for junction box to empty, then give amb green.
+      // Extra wait (up to 3 s) if cars are still physically inside the box.
+      j.mainSig = 'red'; j.crossSig = 'red';
+      j.statusText = 'All-red — clearing junction…';
+      if (j.pTimer <= 0) {
+        const busy = junctionHasTraffic(j);
+        const overtime = -j.pTimer;           // seconds over the base ALL_RED_TIME
+        if (!busy || overtime >= 3.0) {        // clear, or waited long enough
+          j.pState   = PSTATE.SERVING;
+          j.mainSig  = 'green';
+          j.crossSig = 'red';
+        }
+        // else: keep waiting (pTimer goes negative, overtime grows)
+      }
+      break;
+
+    case PSTATE.SERVING:
+      // Ambulance has green, all others red. Hold until ambulance clears (see updateAmbulance).
+      j.mainSig = 'green'; j.crossSig = 'red';
+      j.statusText = '🟢 Ambulance Priority';
+      break;
+
+    case PSTATE.HOLD:
+      // Ambulance rear has cleared the box. Hold green briefly then resume cycle.
+      j.mainSig = 'green'; j.crossSig = 'red';
+      j.statusText = '🟢 Holding after pass…';
+      if (j.pTimer <= 0) {
+        j.ambPassed  = true;
+        j.passedFlash = 2.5;
+        triggerBurst(j);
+        j.pState  = PSTATE.RESUME_YELLOW;
+        j.pTimer  = CFG.YELLOW_TIME;
+        j.mainSig = 'yellow';
+      }
+      break;
+
+    case PSTATE.RESUME_YELLOW:
+      // Return to normal cycle through yellow → all-red → resync
+      j.mainSig = 'yellow'; j.crossSig = 'red';
+      j.statusText = 'Resuming normal cycle…';
+      if (j.pTimer <= 0) {
+        j.pState  = PSTATE.RESUME_ALLRED;
+        j.pTimer  = CFG.ALL_RED_TIME;
+        j.mainSig = 'red';
+      }
+      break;
+
+    case PSTATE.RESUME_ALLRED:
+      j.mainSig = 'red'; j.crossSig = 'red';
+      j.statusText = 'Resuming…';
+      if (j.pTimer <= 0) {
+        // Re-sync to global clock using this junction's phase offset
+        j.pState   = PSTATE.NORMAL;
+        const [ms, cs] = sigsAt(simTime + J_PHASE_OFFSET[j.index]);
+        j.mainSig  = ms; j.crossSig = cs;
+        j.highlight = false; j.statusText = 'Normal';
+      }
+      break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9  BURST RINGS
+// ═══════════════════════════════════════════════════════════════════════════
+function triggerBurst(j) {
+  for (let i=0;i<4;i++) burstRings.push({x:j.x,y:j.y,r:8+i*10,maxR:70+i*20,alpha:.9-i*.15});
+}
+function updateBursts(dt) {
+  burstRings=burstRings.filter(b=>{b.r+=55*dt;b.alpha-=0.6*dt;return b.alpha>0;});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §10  RENDERING  — draw order: grass → sidewalks → asphalt → junction boxes
+//       → hatch → lane marks → emergency lane → zebra → stop lines → arrows
+//       → cars → ambulance → bursts → signal poles → siren rings → labels
+// ═══════════════════════════════════════════════════════════════════════════
+const C = {
+  grass    : '#111f17',
+  sidewalk : '#1a2d20',
+  asphalt  : '#171c24',
+  asphalt2 : '#1c2130',
+  jborder  : '#2b3a4c',
+  white    : 'rgba(255,255,255,0.80)',
+  whiteDim : 'rgba(255,255,255,0.30)',
+  whiteFaint:'rgba(255,255,255,0.11)',
+  yellow   : '#c4960a',
+  yellowDim: 'rgba(196,150,10,0.45)',
+  emergTint: 'rgba(248,81,73,0.065)',
+  emergLine: 'rgba(248,81,73,0.28)',
+  pole     : '#2d3a4a',
+  housing  : '#0e131c',
+  sigGreen : '#3fb950',
+  sigYellow: '#d29922',
+  sigRed   : '#f85149',
+  sigGreenD: '#0a1a0a',
+  sigYellowD:'#1e1a08',
+  sigRedD  : '#2a1010',
+};
+
+function render() {
+  ctx.clearRect(0,0,W,H);
+  drawGrass();
+  drawSidewalks();
+  drawAsphalt();
+  drawJunctionBoxes();
+  drawJunctionHatch();
+  drawLaneMarkings();
+  drawEmergencyLane();
+  drawZebraCrossings();
+  drawStopLines();
+  drawLaneArrows();
+  for (const car of cars) drawCar(car);
+  if (amb && amb.active) drawAmbulance();
+  for (const b of burstRings) drawBurstRing(b);
+  for (const j of junctions) drawSignalPoles(j);
+  if (amb && amb.active && amb.sirenOn) drawSirenRings();
+  for (const j of junctions) drawJunctionLabel(j);  // always on top
+}
+
+// ── Terrain ──────────────────────────────────────────────────────────────
+function drawGrass() {
+  ctx.fillStyle=C.grass; ctx.fillRect(0,0,W,H);
+}
+
+function drawSidewalks() {
+  ctx.fillStyle=C.sidewalk;
+  const my=mainY();
+  // Main road sidewalks (full width)
+  ctx.fillRect(0, my-CFG.ROAD_W/2-CFG.CURB_W, W, CFG.CURB_W);
+  ctx.fillRect(0, my+CFG.ROAD_W/2,             W, CFG.CURB_W);
+  // Side road sidewalks (above and below main road area)
+  for (const j of junctions) {
+    const jt = j.y-CFG.ROAD_W/2, jb = j.y+CFG.ROAD_W/2;
+    ctx.fillRect(j.x-CFG.SIDE_W/2-CFG.CURB_W, 0,            CFG.CURB_W, jt);
+    ctx.fillRect(j.x-CFG.SIDE_W/2-CFG.CURB_W, jb+CFG.CURB_W,CFG.CURB_W, H-jb-CFG.CURB_W);
+    ctx.fillRect(j.x+CFG.SIDE_W/2,            0,             CFG.CURB_W, jt);
+    ctx.fillRect(j.x+CFG.SIDE_W/2,            jb+CFG.CURB_W, CFG.CURB_W, H-jb-CFG.CURB_W);
+  }
+}
+
+function drawAsphalt() {
+  ctx.fillStyle=C.asphalt;
+  const my=mainY();
+  ctx.fillRect(0, my-CFG.ROAD_W/2, W, CFG.ROAD_W);
+  for (const j of junctions)
+    ctx.fillRect(j.x-CFG.SIDE_W/2, 0, CFG.SIDE_W, H);
+}
+
+// ── Junction boxes ─────────────────────────────────────────────────────────
+function drawJunctionBoxes() {
+  for (const j of junctions) {
+    const x=j.x-CFG.SIDE_W/2, y=j.y-CFG.ROAD_W/2, w=CFG.SIDE_W, h=CFG.ROAD_W;
+    ctx.fillStyle=C.asphalt2;
+    rrect(x,y,w,h,3); ctx.fill();
+    ctx.strokeStyle=C.jborder; ctx.lineWidth=1.5;
+    rrect(x,y,w,h,3); ctx.stroke();
+  }
+}
+
+function drawJunctionHatch() {
+  for (const j of junctions) {
+    const x=j.x-CFG.SIDE_W/2, y=j.y-CFG.ROAD_W/2, w=CFG.SIDE_W, h=CFG.ROAD_W;
+    ctx.save();
+    rrect(x,y,w,h,3); ctx.clip();
+    ctx.strokeStyle='rgba(210,170,0,0.065)'; ctx.lineWidth=2;
+    for (let d=-h; d<w+h; d+=11) {
+      ctx.beginPath(); ctx.moveTo(x+d,y); ctx.lineTo(x+d+h,y+h); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+// ── Lane markings ──────────────────────────────────────────────────────────
+function drawLaneMarkings() {
+  const my=mainY();
+  ctx.setLineDash([]);
+
+  // Outer edge lines (solid, slightly dim)
+  ctx.strokeStyle=C.whiteDim; ctx.lineWidth=1.5;
+  hline(0,W, my-CFG.ROAD_W/2);
+  hline(0,W, my+CFG.ROAD_W/2);
+
+  // Inner lane dividers: dashed white (same direction)
+  ctx.strokeStyle=C.whiteFaint; ctx.lineWidth=1.2;
+  ctx.setLineDash([13,9]);
+  hline(0,W, my-CFG.LANE_W);   // between amb lane and east outer
+  hline(0,W, my+CFG.LANE_W);   // between west inner and outer
+  ctx.setLineDash([]);
+
+  // Double yellow centre median (opposing directions)
+  ctx.strokeStyle=C.yellow; ctx.lineWidth=1.5;
+  hline(0,W, my-2);
+  hline(0,W, my+2);
+
+  // Side roads
+  for (const j of junctions) {
+    ctx.strokeStyle=C.whiteDim; ctx.lineWidth=1.5;
+    vline(j.x-CFG.SIDE_W/2, 0, H);
+    vline(j.x+CFG.SIDE_W/2, 0, H);
+    // Centre solid yellow (opposing lanes)
+    ctx.strokeStyle=C.yellowDim; ctx.lineWidth=1.5;
+    vline(j.x, 0, H);
+  }
+}
+
+// ── Emergency lane ─────────────────────────────────────────────────────────
+function drawEmergencyLane() {
+  const my=mainY();
+  // Subtle red tint over ambulance lane area
+  ctx.fillStyle=C.emergTint;
+  ctx.fillRect(0, my-CFG.LANE_W, W, CFG.LANE_W);
+  // Red dashed border on the south edge of amb lane (separates from east outer lane)
+  ctx.strokeStyle=C.emergLine; ctx.lineWidth=1.2;
+  ctx.setLineDash([6,6]);
+  hline(0,W, my-CFG.LANE_W);
+  ctx.setLineDash([]);
+}
+
+// ── Zebra crossings (pedestrian) ───────────────────────────────────────────
+function drawZebraCrossings() {
+  const my=mainY(), ST=4, GAP=4, STEP=ST+GAP;
+  ctx.fillStyle=C.whiteFaint;
+  for (const j of junctions) {
+    const sx_e=slEast(j.index),  sx_w=slWest(j.index);
+    const sy_s=slSouth(j.index), sy_n=slNorth(j.index);
+    // East approach (before stop line, columns of stripes)
+    for (let sx=sx_e-CFG.ZEBRA_DEPTH; sx<sx_e-2; sx+=STEP)
+      ctx.fillRect(sx, my-CFG.ROAD_W/2, ST, CFG.ROAD_W);
+    // West approach
+    for (let sx=sx_w+2; sx<sx_w+CFG.ZEBRA_DEPTH; sx+=STEP)
+      ctx.fillRect(sx, my-CFG.ROAD_W/2, ST, CFG.ROAD_W);
+    // South approach (rows of stripes)
+    for (let sy=sy_s-CFG.ZEBRA_DEPTH; sy<sy_s-2; sy+=STEP)
+      ctx.fillRect(j.x-CFG.SIDE_W/2, sy, CFG.SIDE_W, ST);
+    // North approach
+    for (let sy=sy_n+2; sy<sy_n+CFG.ZEBRA_DEPTH; sy+=STEP)
+      ctx.fillRect(j.x-CFG.SIDE_W/2, sy, CFG.SIDE_W, ST);
+  }
+}
+
+// ── Stop lines (solid white) ───────────────────────────────────────────────
+function drawStopLines() {
+  const my=mainY();
+  ctx.strokeStyle=C.white; ctx.lineWidth=2.5; ctx.setLineDash([]);
+  for (const j of junctions) {
+    // East stop line covers east half of road (from north edge to centre)
+    vline(slEast(j.index),  my-CFG.ROAD_W/2, my);
+    // West stop line covers west half (centre to south edge)
+    vline(slWest(j.index),  my, my+CFG.ROAD_W/2);
+    // South approach stop line (left lane only)
+    hline(j.x-CFG.SIDE_W/2, j.x, slSouth(j.index));
+    // North approach stop line (right lane only)
+    hline(j.x, j.x+CFG.SIDE_W/2, slNorth(j.index));
+  }
+}
+
+// ── Lane direction arrows ──────────────────────────────────────────────────
+function drawLaneArrows() {
+  for (const j of junctions) {
+    const ax = CFG.ARROW_DIST + CFG.ZEBRA_DEPTH;
+    // East outer lane →
+    arrowH(slEast(j.index) - ax, carEastY(),       1);
+    // West inner/outer lanes ←
+    arrowH(slWest(j.index) + ax, carWestInnerY(),  -1);
+    arrowH(slWest(j.index) + ax, carWestOuterY(),  -1);
+    // Side road south ↓
+    arrowV(carSouthX(j), slSouth(j.index) - ax,  1);
+    // Side road north ↑
+    arrowV(carNorthX(j), slNorth(j.index) + ax,  -1);
+  }
+}
+function arrowH(cx,cy,dir) {
+  ctx.save(); ctx.translate(cx,cy); ctx.fillStyle='rgba(255,255,255,0.20)';
+  const L=14,hw=5;
+  ctx.fillRect(dir<0?0:-L, -1, L, 2);
+  ctx.beginPath(); ctx.moveTo(L/2*dir,0); ctx.lineTo((L/2-hw)*dir,-hw*.6);
+  ctx.lineTo((L/2-hw)*dir,hw*.6); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function arrowV(cx,cy,dir) {
+  ctx.save(); ctx.translate(cx,cy); ctx.fillStyle='rgba(255,255,255,0.20)';
+  const L=14,hw=5;
+  ctx.fillRect(-1,dir<0?0:-L,2,L);
+  ctx.beginPath(); ctx.moveTo(0,L/2*dir); ctx.lineTo(-hw*.6,(L/2-hw)*dir);
+  ctx.lineTo(hw*.6,(L/2-hw)*dir); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ── Cars ──────────────────────────────────────────────────────────────────
+function drawCar(car) {
+  const isH = Math.abs(car.bvx) > 0.5;
+  ctx.save();
+  ctx.translate(car.x, car.y);
+  if (!isH) ctx.rotate(Math.PI/2);
+  // Body
+  ctx.fillStyle=car.color;
+  rrect(-car.w/2,-car.h/2,car.w,car.h,3); ctx.fill();
+  // Windshield glint
+  ctx.fillStyle='rgba(255,255,255,0.14)';
+  rrect(car.w/2-6,-car.h/2+1.5,4.5,car.h-3,1.5); ctx.fill();
+  // Headlight
+  ctx.fillStyle='rgba(255,240,150,0.85)';
+  ctx.fillRect(car.w/2-2,-car.h/4+.5,2,car.h/2-1);
+  ctx.restore();
+}
+
+// ── Ambulance ─────────────────────────────────────────────────────────────
+function drawAmbulance() {
+  if (!amb) return;
+  const {x,y}=amb, w=CFG.AMB_W, h=CFG.AMB_H;
+  ctx.save(); ctx.translate(x,y);
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.22)'; rrect(-w/2+2,-h/2+3,w,h,5); ctx.fill();
+  // Body
+  ctx.shadowBlur=10; ctx.shadowColor='rgba(255,255,255,0.35)';
+  ctx.fillStyle='#ffffff'; rrect(-w/2,-h/2,w,h,5); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#c8d0d8'; ctx.lineWidth=1; rrect(-w/2,-h/2,w,h,5); ctx.stroke();
+  // Red cross
+  ctx.fillStyle='#e82b2b';
+  ctx.fillRect(-4,-2,8,4); ctx.fillRect(-2,-4,4,8);
+  // Red stripe bottom
+  ctx.fillStyle='rgba(220,40,40,0.75)';
+  ctx.fillRect(-w/2+2,h/2-4,w-4,3);
+  // Siren lights (top, alternating blue / red)
+  const t=Date.now()/340;
+  [['-7',Math.sin(t)>0?'#4878f0':'#f85149'],['7',Math.sin(t+Math.PI)>0?'#4878f0':'#f85149']]
+    .forEach(([xo,col])=>{
+      ctx.shadowBlur=12; ctx.shadowColor=col; ctx.fillStyle=col;
+      ctx.beginPath(); ctx.arc(+xo,-h/2-2.5,3.5,0,Math.PI*2); ctx.fill();
+    });
+  ctx.shadowBlur=0;
+  // Headlight
+  ctx.fillStyle='rgba(255,250,200,0.95)';
+  ctx.fillRect(w/2-2.5,-h/4+.5,2.5,h/2-1);
+  ctx.restore();
+}
+
+// ── Siren pulse rings ──────────────────────────────────────────────────────
+function drawSirenRings() {
+  if (!amb) return;
+  const {x,y,pulseR,pulseAlpha}=amb;
+  if (pulseR<1) return;
+  ctx.save();
+  ctx.strokeStyle=`rgba(72,120,240,${(pulseAlpha*.55).toFixed(2)})`;
+  ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.arc(x,y,pulseR,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle=`rgba(248,81,73,${(pulseAlpha*.35).toFixed(2)})`;
+  ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(x,y,pulseR*.62,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Burst rings ────────────────────────────────────────────────────────────
+function drawBurstRing(b) {
+  ctx.save(); ctx.strokeStyle=`rgba(63,185,80,${b.alpha.toFixed(2)})`;
+  ctx.lineWidth=2; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Traffic signal poles & heads ──────────────────────────────────────────
+function drawSignalPoles(j) {
+  const my=mainY();
+  const cw=CFG.CURB_W;
+  // NW pole — for eastbound traffic (placed at north edge, before stop line)
+  drawPole(slEast(j.index)-3,  my-CFG.ROAD_W/2-cw/2, j.mainSig,  -1);
+  // SE pole — for westbound traffic (south edge, west stop line)
+  drawPole(slWest(j.index)+3,  my+CFG.ROAD_W/2+cw/2, j.mainSig,  -1);
+  // NE pole — for southbound traffic (right of side road, above junction)
+  drawPole(j.x+CFG.SIDE_W/2+cw/2, slSouth(j.index)-3, j.crossSig, -1);
+  // SW pole — for northbound traffic (left of side road, below junction)
+  drawPole(j.x-CFG.SIDE_W/2-cw/2, slNorth(j.index)+3, j.crossSig,  1);
+}
+
+function drawPole(px, py, sig, dir) {
+  // dir: -1 head above py, +1 head below
+  const pLen=22, r=4.5;
+  const hx=px, hy=py+dir*(-pLen);
+  // Pole shaft
+  ctx.strokeStyle=C.pole; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(hx,hy); ctx.stroke();
+  // Housing box
+  const bw=r*2+2.5, bh=r*6+4;
+  ctx.fillStyle=C.housing;
+  rrect(hx-bw/2,hy-bh/2,bw,bh,2); ctx.fill();
+  // 3 bulbs: red (top), yellow (mid), green (bottom)
+  const defs=[{k:'red',on:C.sigRed,off:C.sigRedD},
+              {k:'yellow',on:C.sigYellow,off:C.sigYellowD},
+              {k:'green',on:C.sigGreen,off:C.sigGreenD}];
+  defs.forEach((d,i)=>{
+    const by=hy-r*2+i*r*2;
+    const active=sig===d.k;
+    if (active){ctx.shadowBlur=10;ctx.shadowColor=d.on;}else ctx.shadowBlur=0;
+    ctx.fillStyle=active?d.on:d.off;
+    ctx.beginPath(); ctx.arc(hx,by,r-.5,0,Math.PI*2); ctx.fill();
+  });
+  ctx.shadowBlur=0;
+}
+
+// ── Junction label pill (always last — highest z-order) ───────────────────
+function drawJunctionLabel(j) {
+  const lx=j.x, ly=j.y-CFG.ROAD_W/2-CFG.CURB_W-48;
+  const pw=120, ph=35;
+  ctx.fillStyle='rgba(8,12,20,0.93)';
+  rrect(lx-pw/2,ly-ph/2,pw,ph,9); ctx.fill();
+  ctx.strokeStyle=j.highlight?C.sigGreen:'#30363d'; ctx.lineWidth=1.5;
+  rrect(lx-pw/2,ly-ph/2,pw,ph,9); ctx.stroke();
+  ctx.fillStyle=j.highlight?C.sigGreen:'#58a6ff';
+  ctx.font='bold 13px "Segoe UI",system-ui,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(j.label,lx,ly-7);
+  ctx.fillStyle=j.passedFlash>0?C.sigGreen:j.highlight?'#a7f3c3':'#8b949e';
+  ctx.font='10px "Segoe UI",system-ui,sans-serif';
+  ctx.fillText(j.passedFlash>0?'✓ Ambulance Passed':j.statusText, lx, ly+8);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §11  HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function rrect(x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r); ctx.closePath();
+}
+function hline(x1,x2,y) {
+  ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+}
+function vline(x,y1,y2) {
+  ctx.beginPath(); ctx.moveTo(x,y1); ctx.lineTo(x,y2); ctx.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §12  DASHBOARD UPDATE
+// ═══════════════════════════════════════════════════════════════════════════
+let dashTick=0;
+function updateDashboard() {
+  if (++dashTick % 3 !== 0) return;
+  junctions.forEach((j,i)=>{
+    const mDot=container.querySelector(`#js-m-${i}`);
+    const cDot=container.querySelector(`#js-c-${i}`);
+    const stEl=container.querySelector(`#js-st-${i}`);
+    if(!mDot) return;
+    mDot.className=`sig-dot ${j.mainSig}`;
+    cDot.className=`sig-dot cross-dot ${j.crossSig}`;
+    stEl.textContent=j.passedFlash>0?'✓ Passed':(j.pState===PSTATE.NORMAL?'Normal':j.statusText);
+    stEl.style.color=j.passedFlash>0?'#3fb950':j.highlight?'#3fb950':'';
+  });
+  if (!amb||!amb.active) return;
+  const s=DataSource.getAmbulanceState(); if (!s) return;
+  container.querySelector('#ds-speed').textContent   = s.speed_kmh.toFixed(1)+' km/h';
+  container.querySelector('#ds-next').textContent    = s.nextJunctionId||'—';
+  container.querySelector('#ds-dist').textContent    = s.distToNext<9000?Math.round(s.distToNext)+' px':'—';
+  container.querySelector('#ds-eta-n').textContent   = s.etaToNext!=null?s.etaToNext.toFixed(1)+' s':'—';
+  const se=container.querySelector('#ds-siren');
+  se.textContent=s.sirenDetected?'🔵 Active':'Inactive'; se.className=`d-val${s.sirenDetected?' green':''}`;
+  container.querySelector('#ds-cbar').style.width=s.confidence.toFixed(1)+'%';
+  container.querySelector('#ds-cpct').textContent=s.sirenDetected?s.confidence.toFixed(1)+'%':'—';
+  const ml=container.querySelector('#ds-mlstat');
+  ml.textContent=s.sirenDetected?'Detected':'No signal'; ml.className=`d-val${s.sirenDetected?' green':''}`;
+  const etas=DataSource.getJunctionETAs();
+  const maxE=Math.max(...etas.filter(e=>e.eta_s!=null).map(e=>e.eta_s),1);
+  etas.forEach((e,i)=>{
+    const bar=container.querySelector(`#eta-bar-${i}`);
+    const lbl=container.querySelector(`#eta-s-${i}`);
+    if(!bar) return;
+    if(e.passed){bar.style.width='100%';bar.className='eta-bar passed';lbl.textContent='✓';}
+    else if(e.eta_s!=null){
+      const pct=Math.max(5,100-e.eta_s/maxE*100);
+      bar.style.width=pct.toFixed(0)+'%';
+      bar.className=`eta-bar ${junctions[i].pState!==PSTATE.NORMAL?'active':'waiting'}`;
+      lbl.textContent=e.eta_s.toFixed(1)+'s';
+    } else {bar.style.width='0%';bar.className='eta-bar waiting';lbl.textContent='—';}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §13  BANNER
+// ═══════════════════════════════════════════════════════════════════════════
+function setBanner(txt,cls){
+  const el=container.querySelector('#ll-banner');
+  el.textContent=txt; el.className=cls||'';
+}
+function updateBanner(){
+  if(!amb||!amb.active) return;
+  const sv=junctions.filter(j=>j.pState===PSTATE.SERVING||j.pState===PSTATE.HOLD);
+  const cl=junctions.filter(j=>j.pState===PSTATE.CROSS_YELLOW||j.pState===PSTATE.PRE_ALL_RED);
+  if(sv.length) setBanner(`🚑 🔵 SIREN DETECTED — Ambulance passing ${sv[0].label}`,'warn');
+  else if(cl.length) setBanner(`🚑 Clearing ${cl[0].label} — Preemption Active`,'info');
+  else if(amb.sirenOn) setBanner('🔵 SIREN DETECTED — Ambulance En Route','warn');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §14  MAIN LOOP
+// ═══════════════════════════════════════════════════════════════════════════
+function loop(ts) {
+  raf=requestAnimationFrame(loop);
+  if(paused){lastTs=ts;return;}
+  const rawDt=lastTs==null?0.016:Math.min(0.05,(ts-lastTs)/1000);
+  lastTs=ts;
+  const dt=rawDt*simSpeed;
+  simTime+=dt;
+  for(const j of junctions){updatePreemption(j,dt);if(j.passedFlash>0)j.passedFlash-=rawDt;}
+  spawnCars(dt);
+  updateCars(dt);
+  updateAmbulance(dt);
+  updateBursts(dt);
+  updateBanner();
+  updateDashboard();
+  // STRICT_ONE_GREEN audit — log to console if violated (dev mode only)
+  if(STRICT_ONE_GREEN){
+    for(const j of junctions){
+      const mg=j.mainSig==='green', cg=j.crossSig==='green';
+      const my=j.mainSig==='yellow', cy=j.crossSig==='yellow';
+      if(mg&&cg) console.warn(`SIGNAL VIOLATION ${j.label}: both approaches green at t=${simTime.toFixed(2)}s`);
+      if((mg||my)&&(cg||cy)&&!(mg===my)) console.warn(`SIGNAL VIOLATION ${j.label}: green+yellow conflict at t=${simTime.toFixed(2)}s`);
+    }
+  }
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §15  INIT & EVENTS & BOOT
+// ═══════════════════════════════════════════════════════════════════════════
+function init() {
+  initGeometry();
+  simTime=0; cars=[]; burstRings=[]; amb=null; spawnTimers={};
+  running=false; paused=false;
+  setBanner('Normal Operation','');
+  container.querySelector('#ll-btn-start').disabled=false;
+  container.querySelector('#ll-btn-pause').textContent='Pause';
+}
+function startSim(){
+  running=true; spawnAmbulance();
+  setBanner('🔵 SIREN DETECTED — Ambulance Dispatched','warn');
+  container.querySelector('#ll-btn-start').disabled=true;
+}
+function resetSim(){
+  if(raf)cancelAnimationFrame(raf);
+  lastTs=null; init(); raf=requestAnimationFrame(loop);
+}
+
+container.querySelector('#ll-btn-start').addEventListener('click',()=>{if(!running)startSim();});
+container.querySelector('#ll-btn-reset').addEventListener('click',resetSim);
+container.querySelector('#ll-btn-pause').addEventListener('click',()=>{
+  paused=!paused;
+  container.querySelector('#ll-btn-pause').textContent=paused?'Resume':'Pause';
+});
+container.querySelector('#ll-speed').addEventListener('input',e=>{
+  simSpeed=parseFloat(e.target.value);
+  container.querySelector('#ll-spd-lbl').textContent=simSpeed+'×';
+});
+window.addEventListener('resize',()=>{resize();initGeometry();});
+
+init();
+raf=requestAnimationFrame(loop);
+
+// Public API
+return {
+  start:startSim, reset:resetSim,
+  pause:()=>{paused=!paused;},
+  setSpeed:s=>{simSpeed=s;},
+  // ← PLUG IN ML MODEL: demo.setDataSource({getAmbulanceState:()=>myAPI.fetch()})
+  setDataSource:ds=>{DataSource=Object.assign({},DataSource,ds);},
+};
+
+})(document.getElementById('ll-app'));
+</script>
+</body>
+</html>

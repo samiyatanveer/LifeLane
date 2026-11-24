@@ -49,6 +49,16 @@ async def init_db():
             "ALTER TABLE requests ADD COLUMN origin_address VARCHAR(512)",
             "ALTER TABLE requests ADD COLUMN origin_city VARCHAR(128)",
             "ALTER TABLE requests ADD COLUMN location_source VARCHAR(16)",
+            "ALTER TABLE requests ADD COLUMN processing_attempts INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE requests ADD COLUMN processing_error TEXT",
+            "ALTER TABLE requests ADD COLUMN processing_lease_until DATETIME",
+            "ALTER TABLE requests ADD COLUMN processing_attempts INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE requests ADD COLUMN processing_error TEXT",
+            "ALTER TABLE requests ADD COLUMN processing_lease_until DATETIME",
+            "ALTER TABLE requests ADD COLUMN processing_attempts INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE requests ADD COLUMN processing_error TEXT",
+            "ALTER TABLE requests ADD COLUMN processing_lease_until DATETIME",
+            "ALTER TABLE users ADD COLUMN force_password_change BOOLEAN NOT NULL DEFAULT 0",
         ):
             try:
                 await conn.exec_driver_sql(statement)
@@ -109,6 +119,8 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_hospitals_lookup ON hospitals (is_active, province, city)")
         await conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_hospitals_name ON hospitals (name)")
+        await conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_request_transitions_request ON request_transitions (request_id, created_at)")
+        await conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications (user_id, created_at)")
         await conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ux_ambulances_lifelane_id ON ambulances (lifelane_id)")
         await conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ux_ambulances_registration_number ON ambulances (registration_number)")
         # Enforce the public duplicate rule even when two normalized variants race.

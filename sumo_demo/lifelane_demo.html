@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LifeLane · Green Corridor Demo</title>
+<!--
+=====================================================================================================
+LifeLane - single-file live demo (no server, no build, no dependencies). Open in any browser.
+
+WHAT IT SHOWS
+  "Hospital Avenue": 3 signalised junctions (J1, J2, J3). An ambulance drives west -> east to the ER.
+  LifeLane ON  : siren heard -> 3-tier verification -> junction FSM NORMAL -> PREPARING -> SERVING -> RECOVERING
+  LifeLane OFF : ambulance obeys the normal one-approach-at-a-time plan (baseline for the A/B comparison)
+
+SAFETY RULES (enforced in code and checked live in the "Safety monitor"):
+  1. Only ONE approach of a junction is green at any time (W, N, E, S take turns).
+  2. Every change goes  GREEN -> YELLOW(3 s) -> ALL-RED(2 s) -> next GREEN, so nobody is still crossing.
+  3. Everyone except the ambulance stops at the red line. Vehicles keep a safe gap (Krauss car-following).
+  4. Fail-safes: siren muted -> no preemption; 45 s max hold; release as soon as the ambulance is clear.
+
+CODE MAP (all in this file, search for the banner comments)
+  CONFIG & GEOMETRY  -> constants, lanes (pt(s) = world position at distance s along a lane)
+  Sig                -> per-junction signal controller + preemption FSM
+  Sim                -> vehicles, car following, siren detection (3 tiers), safety checks, stats
+  STATIC LAYER       -> pre-rendered city (roads, markings, buildings, hospital)
+  RENDER             -> camera, signals, vehicles, ambulance effects
+  UI                 -> controls, junction cards, A/B result, event log
+
+The sim is deterministic per seed, so the A/B run (OFF vs ON) sees exactly the same traffic.
+To port to SUMO: Sim.step <-> traci.simulationStep, Sig <-> traci.trafficlight.setRedYellowGreenState.
+=====================================================================================================
+-->
+<style>
+:root{
+  --bg:#0a101c; --panel:#101a2b; --panel2:#0d1626; --line:#1d2a44; --text:#e6edf7; --mute:#8a9bb8;
+  --red:#ef4444; --green:#22c55e; --amber:#f59e0b; --blue:#38bdf8; --violet:#a78bfa;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.4 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0e1830,#0a101c);flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+.logo i{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#22c55e,#38bdf8);display:grid;place-items:center;color:#06210f;font-style:normal;font-weight:800;box-shadow:0 0 18px rgba(34,197,94,.35)}
+.logo small{display:block;color:var(--mute);font-weight:500;font-size:11px;letter-spacing:.4px}
+.chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.chip{padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:12px;color:var(--mute);display:flex;gap:6px;align-items:center;white-space:nowrap}
+.chip b{color:var(--text);font-family:var(--mono)}
+.chip.ok{border-color:rgba(34,197,94,.45);color:#9bf0b9}
+.chip.bad{border-color:rgba(239,68,68,.6);color:#fecaca;background:#2a1114}
+main{flex:1;min-height:0;display:flex;gap:0}
+#stage{position:relative;flex:1;min-width:0;background:#0a101c}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;left:14px;top:12px;pointer-events:none}
+.overlay h1{margin:0;font-size:15px;letter-spacing:.3px}
+.overlay p{margin:2px 0 0;color:var(--mute);font-size:12px}
+.legend{position:absolute;left:14px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.legend span{display:flex;align-items:center;gap:6px;background:rgba(16,26,43,.88);border:1px solid var(--line);padding:4px 9px;border-radius:999px;font-size:11.5px;color:#c9d6ec}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.banner{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 16px;border-radius:12px;background:rgba(16,26,43,.94);border:1px solid var(--line);font-weight:600;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.banner.show{opacity:1}
+aside{width:384px;max-width:44vw;border-left:1px solid var(--line);background:var(--panel2);overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+.card h3{margin:0 0 8px;font-size:11px;letter-spacing:1.1px;text-transform:uppercase;color:var(--mute);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:inherit;color:var(--text);background:#16233c;border:1px solid #27385c;padding:8px 12px;border-radius:10px;cursor:pointer;transition:.15s}
+button:hover{background:#1c2c4a;border-color:#38507f}
+button.primary{background:linear-gradient(135deg,#16a34a,#0ea5e9);border:0;font-weight:700;color:#041014;box-shadow:0 4px 16px rgba(14,165,233,.25)}
+button.primary:disabled{opacity:.45;cursor:default;box-shadow:none}
+.seg{display:inline-flex;border:1px solid #27385c;border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:6px 10px;background:#101a2b;color:var(--mute)}
+.seg button.on{background:#1f3358;color:var(--text)}
+label.sw{display:flex;gap:7px;align-items:center;font-size:12.5px;color:#c9d6ec;cursor:pointer;user-select:none}
+input[type=checkbox]{accent-color:#22c55e;width:15px;height:15px}
+.track{position:relative;height:46px;margin:2px 6px 0}
+.track .line{position:absolute;left:0;right:0;top:20px;height:6px;border-radius:3px;background:#1b2740}
+.track .prog{position:absolute;left:0;top:20px;height:6px;border-radius:3px;background:linear-gradient(90deg,#22c55e,#38bdf8);width:0}
+.track .j{position:absolute;top:11px;width:24px;height:24px;margin-left:-12px;border-radius:50%;background:#101a2b;border:2px solid #8a9bb8;display:grid;place-items:center;font-size:10px;font-weight:700;font-family:var(--mono)}
+.track .h{position:absolute;top:9px;right:-8px;width:28px;height:28px;border-radius:8px;background:#ef4444;display:grid;place-items:center;font-weight:800;color:#fff;box-shadow:0 0 14px rgba(239,68,68,.5)}
+.track .amb{position:absolute;top:2px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(239,68,68,.5),0 0 14px #ef4444;display:none}
+.jc{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.jc:first-of-type{border-top:0}
+.jn{font-weight:700;display:flex;gap:8px;align-items:center}
+.pill{padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.4px;border:1px solid}
+.apps{display:flex;gap:5px}
+.ap{width:30px;text-align:center;border-radius:7px;font-size:10.5px;font-weight:700;padding:2px 0;color:#fff;border:1px solid rgba(255,255,255,.08)}
+.tiers{grid-column:1/3;display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--mute)}
+.pbar{position:relative;flex:1;height:7px;border-radius:4px;background:#1b2740;overflow:hidden}
+.pbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#38bdf8,#22c55e);width:0}
+.pbar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:#f59e0b;left:70%}
+.tk{padding:1px 6px;border-radius:6px;background:#16233c;border:1px solid #27385c;font-family:var(--mono)}
+.tk.y{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.55);color:#9bf0b9}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#0d1626;border:1px solid var(--line);border-radius:10px;padding:7px 9px}
+.stat small{display:block;color:var(--mute);font-size:10.5px;letter-spacing:.5px;text-transform:uppercase}
+.stat b{font-family:var(--mono);font-size:17px}
+.cmp{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center}
+.cmp div{background:#0d1626;border:1px solid var(--line);border-radius:10px;padding:8px 4px}
+.cmp small{display:block;color:var(--mute);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+.cmp b{font-family:var(--mono);font-size:19px}
+#log{font-family:var(--mono);font-size:11.5px;max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:3px}
+#log div{padding:3px 7px;border-left:3px solid #27385c;background:#0d1626;border-radius:0 6px 6px 0;color:#c9d6ec}
+#log .g{border-color:var(--green)} #log .a{border-color:var(--amber)} #log .b{border-color:var(--blue)} #log .r{border-color:var(--red)}
+.note{color:var(--mute);font-size:12px}
+@media (max-width:900px){main{flex-direction:column}aside{width:100%;max-width:none;border-left:0;border-top:1px solid var(--line)}#stage{min-height:46vh}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i>L</i><div>LifeLane<small>EMERGENCY GREEN-CORRIDOR · LIVE DEMO</small></div></div>
+  <div class="chips">
+    <div class="chip" id="chOne">ONE OPEN / JUNCTION <b>✓</b></div>
+    <div class="chip" id="chCol">COLLISIONS <b>0</b></div>
+    <div class="chip" id="chMode">LIFELANE <b>ON</b></div>
+  </div>
+</header>
+<main>
+  <section id="stage">
+    <canvas id="cv"></canvas>
+    <div class="overlay"><h1>Hospital Avenue</h1><p>3 signalised junctions · one approach open at a time · all others stop at red</p></div>
+    <div class="banner" id="banner"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:#22c55e"></i>GREEN – only one approach</span>
+      <span><i class="dot" style="background:#f59e0b"></i>YELLOW – finish crossing</span>
+      <span><i class="dot" style="background:#ef4444"></i>RED – stop at line</span>
+      <span><i class="dot" style="background:#fff;box-shadow:0 0 6px #ef4444"></i>Ambulance</span>
+    </div>
+  </section>
+  <aside>
+    <div class="card">
+      <h3>Controls</h3>
+      <div class="row" style="margin-bottom:9px">
+        <button class="primary" id="bGo">▶ Dispatch ambulance</button>
+        <button id="bReset">↺ Reset</button>
+      </div>
+      <div class="row" style="margin-bottom:9px">
+        <div class="seg" id="sMode"><button data-v="1" class="on">LifeLane ON</button><button data-v="0">OFF</button></div>
+        <div class="seg" id="sSpeed"><button data-v="1" class="on">1×</button><button data-v="2">2×</button><button data-v="4">4×</button></div>
+        <div class="seg" id="sCam"><button data-v="0">Overview</button><button data-v="1" class="on">Follow</button></div>
+      </div>
+      <div class="row">
+        <label class="sw"><input type="checkbox" id="cAuto" checked> Autoplay loop</label>
+        <label class="sw"><input type="checkbox" id="cMute"> Mute siren (fail-safe test)</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Corridor <span id="eta" style="text-transform:none;letter-spacing:0;color:#c9d6ec">idle</span></h3>
+      <div class="track" id="track">
+        <div class="line"></div><div class="prog" id="prog"></div>
+        <div class="j" id="tj0">J1</div><div class="j" id="tj1">J2</div><div class="j" id="tj2">J3</div>
+        <div class="h">H</div><div class="amb" id="tamb"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Junction controllers <span style="text-transform:none;letter-spacing:0">W · N · E · S</span></h3>
+      <div id="jcards"></div>
+    </div>
+
+    <div class="card">
+      <h3>Safety monitor</h3>
+      <div class="grid">
+        <div class="stat"><small>Elapsed</small><b id="sEl">0.0s</b></div>
+        <div class="stat"><small>Amb. stopped</small><b id="sStop">0.0s</b></div>
+        <div class="stat"><small>Held at red</small><b id="sHeld">0</b></div>
+        <div class="stat"><small>Max open</small><b id="sOpen">1</b></div>
+        <div class="stat"><small>Collisions</small><b id="sCol">0</b></div>
+        <div class="stat"><small>Closest</small><b id="sMin">–</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>A / B result <span id="abNote" style="text-transform:none;letter-spacing:0">same traffic, same seed</span></h3>
+      <div class="cmp">
+        <div><small>Without</small><b id="rOff">–</b></div>
+        <div><small>LifeLane</small><b id="rOn" style="color:#22c55e">–</b></div>
+        <div><small>Saved</small><b id="rSave" style="color:#38bdf8">–</b></div>
+      </div>
+    </div>
+
+    <div class="card"><h3>Event log</h3><div id="log"></div></div>
+    <div class="note">Mock physics runs entirely in your browser. Same logic maps 1-to-1 onto SUMO + TraCI (see comment at the top of this file).</div>
+  </aside>
+</main>
+
+<script>
+"use strict";
+/* ================================================================== CONFIG & GEOMETRY */
+const X = [130, 300, 470];            // junction centres along the avenue (m)
+const END = 640, ER_X = 590;          // avenue length, ambulance bay (hospital ER)
+const HALF = 8.75, BOX = 7, STOPOFF = 12, SIDE = 130;
+const GREEN = 9, YEL = 3, ALLRED = 2; // seconds
+const MIC = 190, PTH = 0.70, LEAD = 10, MAXSERVE = 45;
+const MINGAP = 3, TAU = 0.5, B = 4.5, BMAX = 8;
+const APPR = ['W', 'N', 'E', 'S'];
+const WORLD = { x0: -25, y0: -150, x1: 665, y1: 150 };
+const MODE_COL = { NORMAL: '#8a9bb8', PREPARING: '#f59e0b', SERVING: '#22c55e', RECOVERING: '#38bdf8' };
+const SIG_COL = { R: '#ef4444', Y: '#f59e0b', G: '#22c55e' };
+
+function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+/* Lanes: pt(s) = world position (x,y; y points down) at distance s along the lane; hd = heading (rad). */
+const LANES = (() => {
+  const L = []; let k = 1;
+  const stopsMain = x => ({ s: x - STOPOFF });
+  L.push({ k: k++, id: 'E_A', ap: 'W', len: END, hd: 0, rate: 0.16, pt: s => [s, 7],
+           stops: X.map((x, j) => ({ j, s: x - STOPOFF })) });
+  L.push({ k: k++, id: 'E_B', ap: 'W', len: END, hd: 0, rate: 0, amb: true, pt: s => [s, 3.5],
+           stops: X.map((x, j) => ({ j, s: x - STOPOFF })) });
+  L.push({ k: k++, id: 'W_A', ap: 'E', len: END, hd: Math.PI, rate: 0.14, pt: s => [END - s, -7],
+           stops: X.map((x, j) => ({ j, s: END - (x + STOPOFF) })) });
+  X.forEach((x, j) => {
+    L.push({ k: k++, id: 'N' + j, ap: 'N', len: 2 * SIDE, hd: Math.PI / 2, rate: 0.055, pt: s => [x - 3.5, -SIDE + s],
+             stops: [{ j, s: SIDE - STOPOFF }] });
+    L.push({ k: k++, id: 'S' + j, ap: 'S', len: 2 * SIDE, hd: -Math.PI / 2, rate: 0.055, pt: s => [x + 3.5, SIDE - s],
+             stops: [{ j, s: SIDE - STOPOFF }] });
+  });
+  return L;
+})();
+
+const CAR_COLS = ['#7dd3fc', '#a78bfa', '#fcd34d', '#f9a8d4', '#86efac', '#fdba74', '#cbd5e1', '#fca5a5', '#67e8f9', '#c4b5fd'];
+
+/* ================================================================== SIGNAL CONTROLLER + FSM */
+class Sig {
+  constructor(j, r) {
+    this.j = j; this.mode = 'NORMAL'; this.i = Math.floor(r() * 4); this.phase = 'G';
+    this.t = r() * GREEN * 0.8; this.target = 0; this.hold = 0;
+  }
+  state(ap) {                       // 'G' | 'Y' | 'R' for an approach
+    if (APPR[this.i] !== ap) return 'R';
+    return this.phase === 'G' ? 'G' : this.phase === 'Y' ? 'Y' : 'R';
+  }
+  begin(ap) {                       // PREPARING
+    this.mode = 'PREPARING'; this.target = APPR.indexOf(ap);
+    if (this.phase === 'G') {
+      if (this.i === this.target) { this.mode = 'SERVING'; this.hold = 0; }
+      else { this.phase = 'Y'; this.t = 0; }   // never jump to green: always yellow -> all red first
+    }
+  }
+  release() { this.mode = 'RECOVERING'; this.phase = 'Y'; this.t = 0; }
+  step(dt) {
+    this.t += dt;
+    if (this.mode === 'SERVING') { this.hold += dt; return; }
+    if (this.phase === 'G') {
+      if (this.mode === 'NORMAL' && this.t >= GREEN) { this.phase = 'Y'; this.t = 0; }
+    } else if (this.phase === 'Y') {
+      if (this.t >= YEL) { this.phase = 'AR'; this.t = 0; }
+    } else if (this.t >= ALLRED) {                         // all-red finished
+      if (this.mode === 'PREPARING') { this.i = this.target; this.phase = 'G'; this.t = 0; this.mode = 'SERVING'; this.hold = 0; }
+      else if (this.mode === 'RECOVERING') { this.i = (this.target + 1) % 4; this.phase = 'G'; this.t = 0; this.mode = 'NORMAL'; }
+      else { this.i = (this.i + 1) % 4; this.phase = 'G'; this.t = 0; }
+    }
+  }
+  open() { return this.phase === 'G' ? 1 : 0; }              // exactly one approach is G while phase==G
+}
+
+/* ================================================================== SIM */
+function rectOf(v, lane) {
+  const [cx, cy] = lane.pt(v.s - v.len / 2);
+  return { cx, cy, c: Math.cos(lane.hd), s: Math.sin(lane.hd), L: v.len / 2, W: v.w / 2 };
+}
+function overlap(a, b) {            // SAT for two oriented rectangles; returns penetration (>0 means overlap)
+  const axes = [[a.c, a.s], [-a.s, a.c], [b.c, b.s], [-b.s, b.c]];
+  let minPen = 1e9;
+  for (const [ax, ay] of axes) {
+    const ra = a.L * Math.abs(a.c * ax + a.s * ay) + a.W * Math.abs(-a.s * ax + a.c * ay);
+    const rb = b.L * Math.abs(b.c * ax + b.s * ay) + b.W * Math.abs(-b.s * ax + b.c * ay);
+    const d = Math.abs((b.cx - a.cx) * ax + (b.cy - a.cy) * ay);
+    minPen = Math.min(minPen, ra + rb - d);
+    if (d > ra + rb) return -1;
+  }
+  return minPen;
+}
+
+class Sim {
+  constructor(seed, preempt, opts = {}) {
+    this.seed = seed; this.preempt = preempt; this.muted = !!opts.muted;
+    this.t = 0; this.rn = mulberry(seed * 7 + 1);
+    this.lanes = LANES.map(l => Object.assign({}, l, { veh: [], r: mulberry(seed * 131 + l.k) }));
+    this.sig = X.map((x, j) => new Sig(j, mulberry(seed * 17 + j)));
+    this.trk = X.map(() => ({ c: 0, p: 0, t1: false, t2: false, t3: false, eta: 99 }));
+    this.amb = null; this.vid = 1; this.frameT = 0; this.events = [];
+    this.coll = 0; this.pairs = new Set(); this.maxOpen = 1; this.held = 0; this.minClear = 99;
+    this.ambStopped = 0; this.result = null; this.t0 = 0;
+  }
+  log(msg, cls = '') { this.events.push({ t: this.t, msg, cls }); }
+
+  dispatch() {
+    if (this.amb) return;
+    const lane = this.lanes[1];
+    this.amb = { id: 0, lane, s: 0, v: 12, len: 6.2, w: 2.1, vmax: 17, acc: 3.5, amb: true, done: false, go: new Set(), a: 0 };
+    lane.veh.push(this.amb); this.t0 = this.t;
+    this.log('DISPATCH  Ambulance leaves Central Station → Hospital ER', 'b');
+    if (!this.preempt) this.log('LifeLane OFF – ambulance obeys normal signals', 'a');
+  }
+
+  spawn(dt) {
+    for (const l of this.lanes) {
+      const r1 = l.r(), r2 = l.r(), r3 = l.r();      // always draw → identical traffic in A/B runs
+      if (!l.rate || r1 >= l.rate * dt) continue;
+      const tail = l.veh[l.veh.length - 1];
+      const type = r2 < 0.07 ? 'bus' : r2 < 0.25 ? 'van' : 'car';
+      const len = type === 'bus' ? 9.5 : type === 'van' ? 5.6 : 4.4;
+      if (tail && tail.s - tail.len < MINGAP + 9) continue;
+      l.veh.push({ id: this.vid++, lane: l, s: 0, v: 9, len, w: type === 'bus' ? 2.5 : 1.9, type,
+                   vmax: 10 + 3.5 * ((r3 * 7919) % 1), col: CAR_COLS[Math.floor(r3 * CAR_COLS.length)], go: new Set(), a: 0 });
+    }
+  }
+
+  moveVehicles(dt) {
+    for (const l of this.lanes) {
+      let lead = null;
+      for (const v of l.veh) {
+        let vt = v.vmax;
+        if (lead) {
+          const gap = lead.s - lead.len - v.s - MINGAP;
+          const vs = -B * TAU + Math.sqrt(B * B * TAU * TAU + lead.v * lead.v + 2 * B * Math.max(0, gap));
+          vt = Math.min(vt, vs);
+        }
+        for (const st of l.stops) {                  // signal obligations
+          if (v.s > st.s + 0.3 || v.go.has(st.j)) continue;
+          const sg = this.sig[st.j].state(l.ap), d = st.s - v.s;
+          if (sg === 'G') continue;
+          if (sg === 'Y' && d < v.v * v.v / (2 * B) + 1) { v.go.add(st.j); continue; }  // too close to stop → clears
+          vt = Math.min(vt, -B * TAU + Math.sqrt(B * B * TAU * TAU + 2 * B * Math.max(0, d - 0.2)));
+        }
+        if (v.amb && !v.done) {                       // stop at the ER bay
+          const d = ER_X - v.s;
+          vt = Math.min(vt, -B * TAU + Math.sqrt(B * B * TAU * TAU + 2 * B * Math.max(0, d)));
+        }
+        const acc = v.amb ? v.acc : 2.4, dv = vt - v.v;
+        const nv = Math.max(0, dv > 0 ? v.v + Math.min(dv, acc * dt) : v.v + Math.max(dv, -BMAX * dt));
+        v.a = (nv - v.v) / dt; v.v = nv; v.s += nv * dt;
+        lead = v;
+      }
+      l.veh = l.veh.filter(v => v.s < l.len + 12 || v.amb);
+    }
+  }
+
+  checkSafety() {
+    const all = []; for (const l of this.lanes) for (const v of l.veh) all.push([v, l]);
+    for (const s of this.sig) { const open = APPR.filter(a => s.state(a) === 'G').length; if (open > this.maxOpen) this.maxOpen = open; }
+    const A = this.amb;
+    for (let i = 0; i < all.length; i++) {
+      const [a, la] = all[i];
+      for (let k = i + 1; k < all.length; k++) {
+        const [b, lb] = all[k];
+        const [ax, ay] = la.pt(a.s), [bx, by] = lb.pt(b.s);
+        if (Math.abs(ax - bx) > 14 || Math.abs(ay - by) > 14) continue;
+        const p = overlap(rectOf(a, la), rectOf(b, lb));
+        if (p > 0.05) { const key = a.id + ':' + b.id; if (!this.pairs.has(key)) { this.pairs.add(key); this.coll++; } }
+        if ((a === A || b === A) && !A.done) {
+          const d = Math.hypot(ax - bx, ay - by) - (a.len + b.len) / 2 * (la === lb ? 1 : 0.0);
+          if (la !== lb || true) this.minClear = Math.min(this.minClear, Math.max(0, d));
+        }
+      }
+    }
+  }
+
+  frame() {                                              // every 0.5 s: acoustic frame + 3-tier verification
+    const A = this.amb; let held = 0;
+    for (const l of this.lanes) for (const v of l.veh) {
+      if (v.amb || v.v > 0.4) continue;
+      for (const st of l.stops) if (v.s <= st.s + 0.3 && st.s - v.s < 60) { if (this.sig[st.j].state(l.ap) !== 'G') { held++; break; } }
+    }
+    this.held = held;
+    for (let j = 0; j < 3; j++) {
+      const trk = this.trk[j], sg = this.sig[j];
+      const noise = (this.rn() + this.rn() + this.rn() - 1.5) * 0.12;
+      if (!A || A.done || A.s > X[j] + BOX + 5) { trk.c = 0; trk.p = 0; trk.t1 = trk.t2 = trk.t3 = false; trk.eta = 99; continue; }
+      const d = Math.max(0, X[j] - STOPOFF - A.s);
+      let p = 1 / (1 + Math.exp((d - MIC) / 28)) + noise;
+      if (this.muted) p = 0.08 + Math.abs(noise) * 0.3;
+      p = Math.max(0, Math.min(1, p));
+      trk.p = p; trk.c = p >= PTH ? trk.c + 1 : 0;
+      trk.t1 = trk.c >= 3;                                // tier 1: acoustic, 3 consecutive frames ≥ 0.70
+      trk.t2 = true;                                      // tier 2: dispatch route passes this junction
+      trk.eta = d / Math.max(A.v, 14);
+      trk.t3 = trk.eta <= LEAD;                           // tier 3: GPS/kinematics – arriving soon
+      if (this.preempt && sg.mode === 'NORMAL' && trk.t1 && trk.t2 && trk.t3) {
+        sg.begin('W');
+        this.log(`J${j + 1}  verified (acoustic p=${p.toFixed(2)} · route ✓ · GPS ✓)  → PREPARING`, 'a');
+      } else if (!this.preempt || (this.muted && trk.eta <= LEAD && sg.mode === 'NORMAL' && !this._fs[j])) {
+        if (this.muted && this.preempt) { this._fs[j] = 1; this.log(`J${j + 1}  FAIL-SAFE: siren not confirmed → normal plan kept`, 'r'); }
+      }
+    }
+  }
+
+  step(dt) {
+    if (!this._fs) this._fs = {};
+    const prev = this.sig.map(s => s.mode + s.phase);
+    this.spawn(dt);
+    this.sig.forEach(s => s.step(dt));
+    this.moveVehicles(dt);
+    this.t += dt; this.frameT += dt;
+    if (this.frameT >= 0.5) { this.frameT -= 0.5; this.frame(); }
+    const A = this.amb;
+    this.sig.forEach((s, j) => {
+      const m = prev[j].replace(/[GYAR]+$/, '');
+      if (s.mode !== m) {
+        const msg = { PREPARING: `J${j + 1}  other approaches → yellow → ALL RED`, SERVING: `J${j + 1}  SERVING – only the ambulance approach is GREEN`,
+                      RECOVERING: `J${j + 1}  ambulance clear → yellow → all-red → resume`, NORMAL: `J${j + 1}  back to NORMAL plan` }[s.mode];
+        this.log(msg, { PREPARING: 'a', SERVING: 'g', RECOVERING: 'b', NORMAL: '' }[s.mode]);
+      }
+      if (s.mode === 'SERVING' && (!A || A.done || A.s > X[j] + BOX + 5 || s.hold > MAXSERVE)) {
+        if (s.hold > MAXSERVE) this.log(`J${j + 1}  FAIL-SAFE: 45 s max hold reached → release`, 'r');
+        s.release();
+      }
+    });
+    if (A && !A.done) {
+      if (A.v < 0.3 && A.s < ER_X - 3) this.ambStopped += dt;
+      if (A.s >= ER_X - 0.6 && A.v < 0.4) {
+        A.done = true; A.arrive = this.t - this.t0;
+        this.result = { duration: A.arrive, stopped: this.ambStopped };
+        this.log(`ARRIVED  at hospital ER in ${A.arrive.toFixed(1)} s`, 'g');
+      }
+    }
+    this.checkSafety();
+  }
+}
+
+function silentRun(seed, preempt, warm, muted) {
+  const s = new Sim(seed, preempt, { muted });
+  while (s.t < warm) s.step(0.05);
+  s.dispatch();
+  while (!s.result && s.t < warm + 260) s.step(0.05);
+  return s;
+}
+
+/* ================================================================== STATIC LAYER (city) */
+const SC = 5;                              // px per metre for the pre-rendered layer
+function buildStatic() {
+  const W = Math.ceil((WORLD.x1 - WORLD.x0) * SC), H = Math.ceil((WORLD.y1 - WORLD.y0) * SC);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.scale(SC, SC); g.translate(-WORLD.x0, -WORLD.y0);
+  const r = mulberry(7);
+  const rr = (x, y, w, h, rad) => { g.beginPath(); g.roundRect(x, y, w, h, rad); };
+  g.fillStyle = '#0b1220'; g.fillRect(WORLD.x0, WORLD.y0, WORLD.x1 - WORLD.x0, WORLD.y1 - WORLD.y0);
+
+  // ---- blocks
+  const cols = [[WORLD.x0, X[0] - 10], [X[0] + 10, X[1] - 10], [X[1] + 10, X[2] - 10], [X[2] + 10, WORLD.x1]];
+  const rows = [[WORLD.y0, -12], [12, WORLD.y1]];
+  const pal = ['#18253f', '#1b2a47', '#16233b', '#1e2e4d', '#14203a', '#22345a'];
+  const trees = [];
+  rows.forEach((ry, ri) => cols.forEach((cx, ci) => {
+    const [x0, x1] = cx, [y0, y1] = ry;
+    g.fillStyle = '#16223a'; rr(x0 + 0.5, y0 + 0.5, x1 - x0 - 1, y1 - y0 - 1, 3); g.fill();
+    const isHosp = ri === 1 && ci === 3, isPark = (ri === 1 && ci === 1) || (ri === 0 && ci === 2);
+    g.fillStyle = isPark ? '#0f2a1f' : '#111b30'; rr(x0 + 3, y0 + 3, x1 - x0 - 6, y1 - y0 - 6, 2); g.fill();
+    if (isPark) {
+      for (let i = 0; i < 46; i++) trees.push([x0 + 8 + r() * (x1 - x0 - 16), (ri ? y0 + 10 : y0 + 10) + r() * (y1 - y0 - 24), 2.6 + r() * 2.2]);
+      g.strokeStyle = '#1d3b2f'; g.lineWidth = 1.6; g.beginPath();
+      g.moveTo(x0 + 6, ri ? y0 + 20 : y1 - 20); g.bezierCurveTo(x0 + 40, ri ? y0 + 60 : y1 - 70, x1 - 40, ri ? y0 + 30 : y1 - 30, x1 - 6, ri ? y0 + 70 : y1 - 80); g.stroke();
+      return;
+    }
+    if (isHosp) return;
+    const bw = 17, bh = 15;
+    for (let by = y0 + 7; by + bh < y1 - 6; by += bh + 6) {
+      for (let bx = x0 + 7; bx + 10 < x1 - 6; bx += bw + 5 + r() * 6) {
+        if (r() < 0.12) { trees.push([bx + 5, by + 6, 3 + r() * 2]); continue; }
+        const w = Math.min(bw + r() * 8, x1 - 6 - bx), h = bh - 1 + r() * 4;
+        g.fillStyle = 'rgba(0,0,0,.35)'; rr(bx + 1.2, by + 1.4, w, h, 1.2); g.fill();
+        g.fillStyle = pal[Math.floor(r() * pal.length)]; rr(bx, by, w, h, 1.2); g.fill();
+        g.strokeStyle = '#2b4068'; g.lineWidth = 0.28; rr(bx, by, w, h, 1.2); g.stroke();
+        for (let wy = by + 2; wy < by + h - 1.5; wy += 2.6) for (let wx = bx + 2; wx < bx + w - 1.5; wx += 2.6)
+          if (r() < 0.38) { g.fillStyle = r() < 0.7 ? 'rgba(253,224,130,.55)' : 'rgba(125,211,252,.45)'; g.fillRect(wx, wy, 1.2, 0.9); }
+      }
+    }
+  }));
+
+  // ---- hospital (south-east block, next to the ER bay)
+  {
+    const hx = 500, hy = 40;
+    g.fillStyle = 'rgba(0,0,0,.45)'; rr(hx + 2, hy + 2.5, 110, 62, 3); g.fill();
+    g.fillStyle = '#dbe7f5'; rr(hx, hy, 110, 62, 3); g.fill();
+    g.fillStyle = '#c3d3e8'; rr(hx + 6, hy + 6, 44, 50, 2); g.fill(); rr(hx + 60, hy + 6, 44, 50, 2); g.fill();
+    g.fillStyle = '#ef4444'; g.fillRect(hx + 53, hy + 22, 4, 18); g.fillRect(hx + 46, hy + 29, 18, 4);
+    g.fillStyle = '#0b1220'; g.font = '700 4.5px system-ui'; g.textAlign = 'center'; g.fillText('CITY HOSPITAL', hx + 55, hy + 54);
+    g.fillStyle = '#22c55e'; rr(ER_X - 5, 12, 10, 28, 1.5); g.fill();      // ER driveway
+    g.fillStyle = '#ffffff'; g.font = '800 4px system-ui'; g.save(); g.translate(ER_X + 1.5, 26); g.rotate(-Math.PI / 2); g.fillText('EMERGENCY', 0, 0); g.restore();
+    g.fillStyle = '#16223a'; g.beginPath(); g.arc(640, 76, 14, 0, 7); g.fill();       // helipad
+    g.strokeStyle = '#f59e0b'; g.lineWidth = 0.9; g.beginPath(); g.arc(640, 76, 11, 0, 7); g.stroke();
+    g.fillStyle = '#f59e0b'; g.font = '800 12px system-ui'; g.fillText('H', 640, 80.4);
+  }
+
+  // ---- roads
+  const sidewalk = '#1a2641', asphalt = '#222c42', boxc = '#26314a';
+  g.fillStyle = sidewalk; g.fillRect(WORLD.x0, -HALF - 3, WORLD.x1 - WORLD.x0, 2 * HALF + 6);
+  X.forEach(x => g.fillRect(x - BOX - 3, WORLD.y0, 2 * BOX + 6, WORLD.y1 - WORLD.y0));
+  g.fillStyle = asphalt; g.fillRect(WORLD.x0, -HALF, WORLD.x1 - WORLD.x0, 2 * HALF);
+  X.forEach(x => g.fillRect(x - BOX, WORLD.y0, 2 * BOX, WORLD.y1 - WORLD.y0));
+  g.fillStyle = boxc; X.forEach(x => g.fillRect(x - BOX, -HALF, 2 * BOX, 2 * HALF));
+  g.strokeStyle = '#3a4c72'; g.lineWidth = 0.3;                    // kerb lines
+  g.beginPath(); g.moveTo(WORLD.x0, -HALF); g.lineTo(WORLD.x1, -HALF); g.moveTo(WORLD.x0, HALF); g.lineTo(WORLD.x1, HALF); g.stroke();
+
+  // ---- markings
+  const inBox = x => X.some(j => x > j - 14 && x < j + 14);
+  g.lineWidth = 0.35;
+  for (let x = WORLD.x0; x < WORLD.x1; x += 1) {                   // double yellow median on the avenue
+    if (inBox(x)) continue;
+    g.fillStyle = '#d9a43a'; g.fillRect(x, -0.9, 1.05, 0.28); g.fillRect(x, 0.62, 1.05, 0.28);
+  }
+  g.strokeStyle = 'rgba(255,255,255,.55)'; g.setLineDash([3, 4]);
+  [-5.25, 5.25].forEach(y => { g.beginPath(); for (let x = WORLD.x0; x < WORLD.x1; x += 0) { const e = X.find(j => x >= j - 14 - 7 && x < j + 14); if (e !== undefined) { x = e + 14; g.moveTo(x, y); continue; } g.moveTo(x, y); g.lineTo(Math.min(x + 40, WORLD.x1), y); x += 40; } g.stroke(); });
+  g.setLineDash([]);
+  X.forEach(x => {                                                  // side streets: double yellow
+    g.fillStyle = '#d9a43a';
+    for (let y = WORLD.y0; y < WORLD.y1; y += 1) { if (Math.abs(y) < 14) continue; g.fillRect(x - 0.9, y, 0.28, 1.05); g.fillRect(x + 0.62, y, 0.28, 1.05); }
+    // zebra crossings on all four arms + stop lines
+    g.fillStyle = 'rgba(235,242,255,.85)';
+    for (let k = 0; k < 6; k++) {
+      const o = -HALF + 1 + k * 2.9;
+      [x - 11, x + 8].forEach(zx => g.fillRect(zx, o, 3, 1.5));
+    }
+    for (let k = 0; k < 4; k++) {
+      const o = x - BOX + 1 + k * 3.5;
+      [-11, 8.2].forEach(zy => g.fillRect(o, zy - (zy < 0 ? 0 : -0.0), 1.8, 3));
+    }
+    g.fillRect(x - STOPOFF - 0.2, 1.75, 0.7, 7);  g.fillRect(x + STOPOFF - 0.5, -8.75, 0.7, 7);
+    g.fillRect(x - 5.25, -STOPOFF - 0.5, 3.5, 0.7); g.fillRect(x + 1.75, STOPOFF - 0.2, 3.5, 0.7);
+  });
+  g.fillStyle = 'rgba(56,189,248,.08)'; g.fillRect(WORLD.x0, 1.75, WORLD.x1 - WORLD.x0, 3.5);   // emergency lane tint
+  // arrows
+  g.fillStyle = 'rgba(255,255,255,.28)';
+  [60, 200, 380, 540].forEach(x => { [[7, 1], [3.5, 1], [-7, -1]].forEach(([y, d]) => { g.beginPath(); g.moveTo(x + 3 * d, y); g.lineTo(x - 1 * d, y - 1.2); g.lineTo(x - 1 * d, y + 1.2); g.fill(); }); });
+
+  // ---- trees along sidewalks & parks
+  X.forEach((x, i) => {
+    for (let tx = WORLD.x0 + 8; tx < WORLD.x1; tx += 17) { if (Math.abs(tx - x) < 20) continue; if (i === 0) { trees.push([tx, -HALF - 1.6, 1.5], [tx + 6, HALF + 1.6, 1.5]); } }
+  });
+  trees.forEach(([x, y, rad]) => {
+    g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.arc(x + 0.8, y + 0.9, rad, 0, 7); g.fill();
+    g.fillStyle = r() < 0.5 ? '#14532d' : '#166534'; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill();
+    g.fillStyle = 'rgba(134,239,172,.25)'; g.beginPath(); g.arc(x - rad * .25, y - rad * .3, rad * .55, 0, 7); g.fill();
+  });
+  return c;
+}
+
+/* ================================================================== RENDER */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+let STATIC = null, dpr = 1;
+const cam = { x: 320, y: 0, z: 1, follow: true };
+let cur, offRes = null, onRes = null, warm = 30, runSeed = 11, speed = 1, preemptOn = true, autoplay = true, autoTimer = 0, lastBanner = 0;
+
+function fitZoom() { return Math.min(cv.width / dpr / 700, cv.height / dpr / 262); }
+function resize() {
+  const b = cv.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(b.width * dpr); cv.height = Math.round(b.height * dpr);
+}
+addEventListener('resize', resize);
+
+function lamp(x, y, st) {
+  ctx.fillStyle = '#0b1220'; ctx.beginPath(); ctx.roundRect(x - 1.5, y - 4.3, 3, 8.6, 1); ctx.fill();
+  ctx.strokeStyle = '#33466e'; ctx.lineWidth = 0.25; ctx.stroke();
+  [['R', -2.8], ['Y', 0], ['G', 2.8]].forEach(([k, dy]) => {
+    const on = st === k; ctx.fillStyle = on ? SIG_COL[k] : '#1b2740';
+    if (on) { ctx.shadowColor = SIG_COL[k]; ctx.shadowBlur = 10 * dpr; }
+    ctx.beginPath(); ctx.arc(x, y + dy, 0.95, 0, 7); ctx.fill(); ctx.shadowBlur = 0;
+  });
+}
+function bar(x, y, w, h, st) {
+  ctx.fillStyle = SIG_COL[st]; ctx.shadowColor = SIG_COL[st]; ctx.shadowBlur = 9 * dpr;
+  ctx.globalAlpha = st === 'R' ? 0.75 : 1; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}
+
+function drawVeh(v, lane, t) {
+  const [x, y] = lane.pt(v.s - v.len / 2);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(lane.hd);
+  const L = v.len * 1.18, W = v.w * 1.3, braking = v.a < -0.6 || v.v < 0.3;
+  if (v.amb) {
+    const f = Math.floor(t * 6) % 2;
+    ctx.fillStyle = 'rgba(239,68,68,.16)'; ctx.beginPath(); ctx.arc(0, 0, 13 + 2 * Math.sin(t * 6), 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.roundRect(-L / 2 + .5, -W / 2 + .6, L, W, 1.1); ctx.fill();
+    ctx.fillStyle = '#f8fafc'; ctx.beginPath(); ctx.roundRect(-L / 2, -W / 2, L, W, 1.1); ctx.fill();
+    ctx.fillStyle = '#ef4444'; ctx.fillRect(-L / 2 + 0.4, -W * 0.12, L - 0.8, W * 0.24);
+    ctx.fillStyle = '#7dd3fc'; ctx.fillRect(L * 0.2, -W / 2 + .5, L * 0.18, W - 1);
+    ctx.fillStyle = '#ef4444'; ctx.fillRect(-L * 0.08, -0.35, 1.8, 0.7); ctx.fillRect(-L * 0.08 + 0.55, -1.0, 0.7, 2);
+    ctx.shadowBlur = 16 * dpr;
+    ctx.fillStyle = f ? '#ef4444' : '#60a5fa'; ctx.shadowColor = ctx.fillStyle; ctx.fillRect(L * 0.02, -W / 2 + .1, 1, W / 2 - .2);
+    ctx.fillStyle = f ? '#60a5fa' : '#ef4444'; ctx.shadowColor = ctx.fillStyle; ctx.fillRect(L * 0.02, .1, 1, W / 2 - .2);
+    ctx.shadowBlur = 0;
+  } else {
+    ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.beginPath(); ctx.roundRect(-L / 2 + .5, -W / 2 + .6, L, W, 1); ctx.fill();
+    ctx.fillStyle = v.col; ctx.beginPath(); ctx.roundRect(-L / 2, -W / 2, L, W, v.type === 'bus' ? .8 : 1.2); ctx.fill();
+    ctx.fillStyle = 'rgba(8,14,28,.72)';
+    if (v.type === 'bus') { for (let i = -3; i <= 2; i++) ctx.fillRect(i * L / 8.2, -W / 2 + .35, L / 10, W - .7); }
+    else { ctx.fillRect(L * 0.08, -W / 2 + .35, L * .22, W - .7); ctx.fillRect(-L * .3, -W / 2 + .35, L * .14, W - .7); }
+  }
+  ctx.fillStyle = '#fff6c9'; ctx.fillRect(L / 2 - .5, -W / 2 + .2, .5, .5); ctx.fillRect(L / 2 - .5, W / 2 - .7, .5, .5);
+  ctx.fillStyle = braking ? '#ff3b3b' : '#6b1b1b';
+  if (braking) { ctx.shadowColor = '#ff3b3b'; ctx.shadowBlur = 6 * dpr; }
+  ctx.fillRect(-L / 2, -W / 2 + .2, .5, .6); ctx.fillRect(-L / 2, W / 2 - .8, .5, .6); ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function render(now) {
+  const sim = cur, t = now / 1000, A = sim.amb;
+  const fz = fitZoom();
+  const tz = cam.follow ? fz * 2.6 : fz;
+  const tx = cam.follow && A ? Math.max(60, Math.min(580, A.s + 22)) : 320, ty = 0;
+  const k = cam.follow ? 0.08 : 0.12;
+  cam.z += (tz - cam.z) * k; cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0a101c'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const z = cam.z * dpr, ox = cv.width / 2 - cam.x * z, oy = cv.height / 2 - cam.y * z;
+  ctx.setTransform(z, 0, 0, z, ox, oy);
+  ctx.drawImage(STATIC, WORLD.x0, WORLD.y0, WORLD.x1 - WORLD.x0, WORLD.y1 - WORLD.y0);
+
+  // green-corridor glow + mic rings + route
+  sim.sig.forEach((s, j) => {
+    const x = X[j];
+    if (s.mode === 'SERVING' || s.mode === 'PREPARING') {
+      const col = s.mode === 'SERVING' ? '34,197,94' : '245,158,11';
+      const g = ctx.createLinearGradient(x - 90, 0, x + 12, 0); g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},.2)`);
+      ctx.fillStyle = g; ctx.fillRect(x - 90, 1.75, 102, 7);
+      if (s.mode === 'SERVING') { ctx.fillStyle = 'rgba(34,197,94,.10)'; ctx.fillRect(x - BOX, -HALF, 2 * BOX, 2 * HALF); }
+    }
+    if (A && !A.done && A.s < x + BOX) {
+      ctx.setLineDash([2, 3]); ctx.lineWidth = 0.35;
+      ctx.strokeStyle = sim.trk[j].t1 ? 'rgba(245,158,11,.55)' : 'rgba(56,189,248,.18)';
+      ctx.beginPath(); ctx.arc(x, 0, MIC * (0.92 + 0.04 * Math.sin(t * 3 + j)), 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    }
+  });
+  if (A && !A.done) {
+    ctx.setLineDash([2.2, 2.2]); ctx.strokeStyle = 'rgba(56,189,248,.75)'; ctx.lineWidth = 0.55; ctx.lineDashOffset = -t * 6;
+    ctx.beginPath(); ctx.moveTo(A.s + 4, 3.5); ctx.lineTo(ER_X, 3.5); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+  }
+
+  // signals
+  sim.sig.forEach((s, j) => {
+    const x = X[j];
+    bar(x - STOPOFF - 0.1, 1.75, 0.55, 7, s.state('W'));
+    bar(x + STOPOFF - 0.45, -8.75, 0.55, 7, s.state('E'));
+    bar(x - 5.25, -STOPOFF - 0.45, 3.5, 0.55, s.state('N'));
+    bar(x + 1.75, STOPOFF - 0.1, 3.5, 0.55, s.state('S'));
+    lamp(x - STOPOFF - 1.5, HALF + 3.2, s.state('W'));
+    lamp(x + STOPOFF + 1.5, -HALF - 3.2, s.state('E'));
+    lamp(x - BOX - 1.8, -STOPOFF - 2.5, s.state('N'));
+    lamp(x + BOX + 1.8, STOPOFF + 2.5, s.state('S'));
+    ctx.strokeStyle = MODE_COL[s.mode]; ctx.globalAlpha = s.mode === 'NORMAL' ? 0.25 : 0.9; ctx.lineWidth = 0.7;
+    ctx.shadowColor = MODE_COL[s.mode]; ctx.shadowBlur = s.mode === 'NORMAL' ? 0 : 14 * dpr;
+    ctx.beginPath(); ctx.roundRect(x - BOX - 1.2, -HALF - 1.2, 2 * BOX + 2.4, 2 * HALF + 2.4, 3); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  });
+
+  // vehicles (ambulance last)
+  for (const l of sim.lanes) for (const v of l.veh) if (!v.amb) drawVeh(v, l, t);
+  if (A) {
+    if (!A.done) for (let i = 0; i < 3; i++) {
+      const ph = ((t * 0.9 + i / 3) % 1), [ax, ay] = A.lane.pt(A.s - 3);
+      ctx.strokeStyle = `rgba(239,68,68,${0.5 * (1 - ph)})`; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.arc(ax, ay, 4 + ph * 26, 0, 7); ctx.stroke();
+    }
+    drawVeh(A, A.lane, t);
+  }
+  if (A && A.done) {
+    ctx.fillStyle = '#22c55e'; ctx.font = '800 7px system-ui'; ctx.textAlign = 'center'; ctx.fillText('ARRIVED ✓', ER_X, 0);
+  }
+
+  // screen-space labels
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.textAlign = 'center';
+  const sx = x => ox + x * z, sy = y => oy + y * z;
+  sim.sig.forEach((s, j) => {
+    const px = sx(X[j]), py = sy(-HALF - 24), fs = 12 * dpr;
+    ctx.font = `700 ${fs}px Inter,system-ui,sans-serif`;
+    const label = `J${j + 1}`, tw = ctx.measureText(label).width + 62 * dpr;
+    ctx.fillStyle = 'rgba(10,16,28,.88)'; ctx.beginPath(); ctx.roundRect(px - tw / 2, py - fs * 1.15, tw, fs * 1.75, 8 * dpr); ctx.fill();
+    ctx.strokeStyle = MODE_COL[s.mode]; ctx.lineWidth = 1.2 * dpr; ctx.stroke();
+    ctx.fillStyle = '#e6edf7'; ctx.textAlign = 'left'; ctx.fillText(label, px - tw / 2 + 9 * dpr, py + fs * 0.2);
+    ctx.fillStyle = MODE_COL[s.mode]; ctx.font = `700 ${9.5 * dpr}px Inter,system-ui,sans-serif`;
+    ctx.fillText(s.mode, px - tw / 2 + 9 * dpr + ctx.measureText(label).width * 1.5 + 4 * dpr, py + fs * 0.18);
+    ctx.textAlign = 'center';
+  });
+  const hp = sx(ER_X);
+  ctx.fillStyle = '#ef4444'; ctx.font = `800 ${11 * dpr}px Inter,system-ui,sans-serif`; ctx.fillText('HOSPITAL ER', hp, sy(-HALF - 24));
+}
+
+/* ================================================================== UI */
+const $ = id => document.getElementById(id);
+const jc = $('jcards');
+jc.innerHTML = [0, 1, 2].map(j => `<div class="jc" id="jc${j}">
+  <div class="jn">J${j + 1} <span class="pill" id="jm${j}">NORMAL</span></div>
+  <div class="apps">${APPR.map(a => `<div class="ap" id="ja${j}${a}">${a}</div>`).join('')}</div>
+  <div class="tiers"><span>🎙</span><div class="pbar"><i id="jp${j}"></i><u></u></div><span class="tk" id="jt1${j}">T1</span><span class="tk" id="jt2${j}">T2</span><span class="tk" id="jt3${j}">T3</span></div>
+</div>`).join('');
+$('tj0').style.left = X[0] / END * 100 + '%'; $('tj1').style.left = X[1] / END * 100 + '%'; $('tj2').style.left = X[2] / END * 100 + '%';
+
+function seg(id, cb) { const el = $(id); el.onclick = e => { const b = e.target.closest('button'); if (!b) return; [...el.children].forEach(c => c.classList.toggle('on', c === b)); cb(b.dataset.v); }; }
+seg('sMode', v => { preemptOn = v === '1'; resetSim(); });
+seg('sSpeed', v => speed = +v);
+seg('sCam', v => cam.follow = v === '1');
+$('bGo').onclick = () => { if (!cur.amb) { cur.dispatch(); autoTimer = 0; } };
+$('bReset').onclick = () => { runSeed++; resetSim(); };
+$('cAuto').onchange = e => { autoplay = e.target.checked; autoTimer = 0; };
+$('cMute').onchange = e => { cur.muted = e.target.checked; };
+
+function banner(msg, col) { const b = $('banner'); b.textContent = msg; b.style.borderColor = col; b.style.color = col; b.classList.add('show'); lastBanner = performance.now(); }
+function resetSim() {
+  cur = new Sim(runSeed, preemptOn, { muted: $('cMute').checked }); cur.__shown = 0; cur.__logged = 0;
+  while (cur.t < warm) cur.step(0.05);
+  cur.events.length = 0; $('log').innerHTML = ''; autoTimer = 0;
+  $('bGo').disabled = false;
+}
+function fmt(x) { return x == null ? '–' : x.toFixed(1) + 's'; }
+
+let lastUI = 0;
+function updateUI(now) {
+  const s = cur, A = s.amb;
+  const done = A && A.done;
+  $('bGo').disabled = !!A;
+  $('chOne').className = 'chip ' + (s.maxOpen <= 1 ? 'ok' : 'bad'); $('chOne').innerHTML = `ONE OPEN / JUNCTION <b>${s.maxOpen <= 1 ? '✓' : '✗'}</b>`;
+  $('chCol').className = 'chip ' + (s.coll === 0 ? 'ok' : 'bad'); $('chCol').innerHTML = `COLLISIONS <b>${s.coll}</b>`;
+  $('chMode').innerHTML = `LIFELANE <b>${s.preempt ? 'ON' : 'OFF'}</b>`;
+  const el = A ? (done ? A.arrive : s.t - s.t0) : 0;
+  $('sEl').textContent = el.toFixed(1) + 's'; $('sStop').textContent = s.ambStopped.toFixed(1) + 's';
+  $('sHeld').textContent = s.held; $('sOpen').textContent = s.maxOpen; $('sCol').textContent = s.coll;
+  $('sMin').textContent = A && s.minClear < 90 ? s.minClear.toFixed(1) + 'm' : '–';
+  s.sig.forEach((g, j) => {
+    const m = $('jm' + j); m.textContent = g.mode; m.style.color = MODE_COL[g.mode]; m.style.borderColor = MODE_COL[g.mode]; m.style.background = MODE_COL[g.mode] + '22';
+    APPR.forEach(a => { const st = g.state(a), e = $('ja' + j + a); e.style.background = SIG_COL[st] + (st === 'R' ? '99' : ''); e.style.boxShadow = st === 'G' ? '0 0 10px #22c55e' : 'none'; });
+    const t = s.trk[j]; $('jp' + j).style.width = (t.p * 100) + '%';
+    ['1', '2', '3'].forEach(n => $('jt' + n + j).classList.toggle('y', !!t['t' + n]));
+    $('tj' + j).style.borderColor = MODE_COL[g.mode]; $('tj' + j).style.color = MODE_COL[g.mode];
+  });
+  if (A) {
+    $('tamb').style.display = 'block'; const f = Math.min(1, A.s / ER_X); $('tamb').style.left = f * ER_X / END * 100 + '%'; $('prog').style.width = f * ER_X / END * 100 + '%';
+    const rem = Math.max(0, ER_X - A.s); $('eta').textContent = done ? `arrived in ${A.arrive.toFixed(1)}s` : `${Math.round(rem)} m to ER · ETA ${(rem / 15 + (s.preempt ? 0 : 6)).toFixed(0)}s`;
+  } else { $('tamb').style.display = 'none'; $('prog').style.width = '0'; $('eta').textContent = 'idle – press Dispatch'; }
+  const lg = $('log');
+  while (s.__logged < s.events.length) {
+    const e = s.events[s.__logged++]; const d = document.createElement('div'); d.className = { g: 'g', a: 'a', b: 'b', r: 'r' }[e.cls] || '';
+    d.textContent = `${(e.t - s.t0 > 0 && A ? e.t - s.t0 : e.t).toFixed(1).padStart(5)}s  ${e.msg}`; lg.appendChild(d); lg.scrollTop = lg.scrollHeight;
+  }
+  if (done && !s.__ab) {                                   // finished → silently run the counterpart with the same seed
+    s.__ab = true;
+    const other = silentRun(s.seed, !s.preempt, warm, s.muted);
+    const mine = s.result.duration, theirs = other.result ? other.result.duration : null;
+    const off = s.preempt ? theirs : mine, on = s.preempt ? mine : theirs;
+    $('rOff').textContent = fmt(off); $('rOn').textContent = fmt(on);
+    $('rSave').textContent = off && on ? `${(off - on).toFixed(0)}s · ${Math.round(100 * (1 - on / off))}%` : '–';
+    $('abNote').textContent = `seed ${s.seed} · 0 collisions both runs: ${other.coll === 0 && s.coll === 0 ? '✓' : '✗'}`;
+    banner(`Arrived in ${mine.toFixed(1)} s` + (off && on ? ` · LifeLane saves ${(off - on).toFixed(0)} s` : ''), '#22c55e');
+    autoTimer = now;
+  }
+  if (autoplay) {
+    if (!A) { if (!autoTimer) autoTimer = now; if (now - autoTimer > 3500) { cur.dispatch(); autoTimer = 0; } }
+    else if (done && autoTimer && now - autoTimer > 9000) { runSeed++; preemptOn = true; [...$('sMode').children].forEach(c => c.classList.toggle('on', c.dataset.v === '1')); resetSim(); }
+  }
+  if (lastBanner && now - lastBanner > 4500) { $('banner').classList.remove('show'); lastBanner = 0; }
+}
+
+let prev = performance.now(), acc = 0;
+function loop(now) {
+  const dt = Math.min(0.1, (now - prev) / 1000); prev = now; acc += dt * speed;
+  let n = 0; while (acc >= 0.05 && n++ < 40) { cur.step(0.05); acc -= 0.05; }
+  render(now);
+  if (now - lastUI > 100) { lastUI = now; updateUI(now); }
+  requestAnimationFrame(loop);
+}
+
+STATIC = buildStatic(); resize(); resetSim(); requestAnimationFrame(loop);
+window.LL = { get sim() { return cur; }, Sim, silentRun, setCam(f) { cam.follow = f; }, setSpeed(v) { speed = v; }, X };
+</script>
+</body>
+</html>

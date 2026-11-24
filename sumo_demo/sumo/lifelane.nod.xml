@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nodes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/nodes_file.xsd">
+    <node id="J1" x="0.0"    y="200.0" type="traffic_light"/>
+    <node id="J2" x="300.0"  y="200.0" type="traffic_light"/>
+    <node id="J3" x="300.0"  y="0.0"   type="traffic_light"/>
+    <node id="J4" x="0.0"    y="0.0"   type="traffic_light"/>
+    <node id="amb_start" x="-200.0" y="200.0" type="priority"/>
+    <node id="hospital"  x="500.0"  y="200.0" type="priority"/>
+    <node id="north_in"  x="0.0"    y="400.0" type="priority"/>
+    <node id="south_in"  x="300.0"  y="-200.0" type="priority"/>
+</nodes>

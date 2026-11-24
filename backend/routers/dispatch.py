@@ -14,16 +14,18 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
+import backend.database as database
 from backend.config import OSRM_BASE_URL, ROUTING_TIMEOUT_SECONDS
-from backend.models import AmbulanceRecord, HospitalRecord, RequestRecord, TemporaryVerificationRecord, UserRecord
+from backend.models import AmbulanceRecord, HospitalRecord, NotificationRecord, RequestRecord, RequestTransitionRecord, TemporaryVerificationRecord, UserRecord
 from backend.schemas import (AmbulanceRegisterRequest, AmbulanceResponse, EmergencyRequestCreate,
     EmergencyRequestResponse, RequestStatusUpdate, RouteOption, TemporaryVerificationConfirm,
     TemporaryVerificationResponse, TemporaryVerificationStart, AmbulanceRegistrationResponse)
 from backend.security import create_token, current_user, hash_password, is_expired, require_roles
 from backend.services.simulation import get_simulation_service
+from backend.services.automated_dispatch import authorize_and_coordinate, confirm_passage, transition, enqueue_request
 
 router = APIRouter(tags=["dispatch"])
-VALID_REQUEST_STATUSES = {"PENDING", "ACTIVE", "COMPLETED", "CANCELLED", "EXPIRED"}
+VALID_REQUEST_STATUSES = {"PENDING", "VALIDATING", "AUTHORIZED", "ROUTE_PREPARATION", "SIGNAL_COORDINATION", "CORRIDOR_READY", "AMBULANCE_PASSAGE", "COMPLETED", "FAILED", "REJECTED", "CANCELLED", "ESCALATED", "ACTIVE", "EXPIRED"}
 
 def _lifelane_id() -> str: return f"LL-{secrets.token_hex(4).upper()}"
 def _device_id() -> str: return f"DEV-{secrets.token_hex(8).upper()}"
@@ -193,16 +195,15 @@ async def create_request(payload: EmergencyRequestCreate, user: UserRecord = Dep
     if not ambulance_id:
         raise HTTPException(status_code=422, detail="Ambulance identity is required")
     hospital = (await db.execute(select(HospitalRecord).where(HospitalRecord.id == payload.hospital_id, HospitalRecord.is_active == True))).scalar_one_or_none()
-    # Existing simulation requests may use historic hospital identifiers. New ambulance requests must use the directory.
-    if user.role == "AMBULANCE" and not hospital and not (payload.origin_edge and payload.destination_edge):
+    if user.role == "AMBULANCE" and not hospital:
         raise HTTPException(status_code=422, detail="Select an active hospital from the LifeLane directory")
     if user.role == "AMBULANCE":
-        if (payload.origin_latitude is None or payload.origin_longitude is None or not payload.location_source) and not (payload.origin_edge and payload.destination_edge):
+        if payload.origin_latitude is None or payload.origin_longitude is None or not payload.location_source:
             raise HTTPException(status_code=422, detail="Current GPS or manually selected location is required")
         duplicate = (await db.execute(
             select(RequestRecord.id).where(
                 RequestRecord.ambulance_id == ambulance_id,
-                RequestRecord.status.in_(["PENDING", "ACTIVE"]),
+                RequestRecord.status.not_in(["COMPLETED", "FAILED", "REJECTED", "CANCELLED", "ESCALATED", "EXPIRED"]),
             )
         )).scalar_one_or_none()
         if duplicate:
@@ -229,23 +230,46 @@ async def create_request(payload: EmergencyRequestCreate, user: UserRecord = Dep
         origin_address=payload.origin_address, origin_city=payload.origin_city, location_source=payload.location_source,
         expires_at=expires_at, created_at=now, updated_at=now)
     db.add(record); await db.flush()
+    await db.commit()
+    asyncio.create_task(enqueue_request(record.request_id, database.AsyncSessionLocal, user.id))
+    return EmergencyRequestResponse.model_validate(record)
+
+@router.get("/requests/{request_id}/transitions")
+async def request_transitions(request_id: str, user: UserRecord = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    request = (await db.execute(select(RequestRecord).where(RequestRecord.request_id == request_id))).scalar_one_or_none()
+    if not request: raise HTTPException(404, "Request not found")
+    if user.role == "AMBULANCE":
+        ambulance = (await db.execute(select(AmbulanceRecord).where(AmbulanceRecord.id == user.ambulance_id))).scalar_one_or_none()
+        if not ambulance or request.ambulance_id != ambulance.lifelane_id: raise HTTPException(403, "Not permitted")
+    rows = (await db.execute(select(RequestTransitionRecord).where(RequestTransitionRecord.request_id == request_id).order_by(RequestTransitionRecord.created_at))).scalars().all()
+    return [{"from_status": row.from_status, "to_status": row.to_status, "detail": row.detail, "created_at": row.created_at} for row in rows]
+
+@router.get("/notifications")
+async def notifications(user: UserRecord = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(select(NotificationRecord).where(NotificationRecord.user_id == user.id).order_by(NotificationRecord.created_at.desc()).limit(50))).scalars().all()
+    return [{"id": row.id, "request_id": row.request_id, "message": row.message, "created_at": row.created_at, "read_at": row.read_at} for row in rows]
+
+@router.post("/requests/{request_id}/confirm-passage", response_model=EmergencyRequestResponse)
+async def passage_confirmed(request_id: str, user: UserRecord = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    record = (await db.execute(select(RequestRecord).where(RequestRecord.request_id == request_id))).scalar_one_or_none()
+    if not record: raise HTTPException(404, "Request not found")
+    ambulance = (await db.execute(select(AmbulanceRecord).where(AmbulanceRecord.id == user.ambulance_id))).scalar_one_or_none() if user.role == "AMBULANCE" else None
+    if user.role == "AMBULANCE" and (not ambulance or record.ambulance_id != ambulance.lifelane_id): raise HTTPException(403, "Not permitted")
+    if record.status != "CORRIDOR_READY": raise HTTPException(409, "Passage can only be confirmed after the corridor is ready")
+    await confirm_passage(db, record, user.id)
     return EmergencyRequestResponse.model_validate(record)
 
 @router.patch("/requests/{request_id}/status", response_model=EmergencyRequestResponse)
 async def update_request_status(request_id: str, payload: RequestStatusUpdate, user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")), db: AsyncSession = Depends(get_db)):
-    if payload.status not in VALID_REQUEST_STATUSES: raise HTTPException(status_code=422, detail="Invalid request status")
+    if payload.status not in {"CANCELLED", "ESCALATED"}: raise HTTPException(status_code=422, detail="Automated lifecycle states cannot be manually changed")
     record = (await db.execute(select(RequestRecord).where(RequestRecord.request_id == request_id))).scalar_one_or_none()
     if not record: raise HTTPException(status_code=404, detail="Request not found")
-    record.status, record.updated_at = payload.status, datetime.now(timezone.utc); await db.flush()
+    try:
+        await transition(db, record, payload.status, f"Exception action {payload.status} recorded by management.", user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return EmergencyRequestResponse.model_validate(record)
 
 @router.post("/requests/{request_id}/authorize-priority", response_model=EmergencyRequestResponse)
 async def authorize_priority(request_id: str, user: UserRecord = Depends(require_roles("DISPATCHER", "ADMIN")), db: AsyncSession = Depends(get_db)):
-    record = (await db.execute(select(RequestRecord).where(RequestRecord.request_id == request_id))).scalar_one_or_none()
-    if not record: raise HTTPException(status_code=404, detail="Request not found")
-    if record.expires_at and is_expired(record.expires_at):
-        record.status = "EXPIRED"; raise HTTPException(status_code=410, detail="Temporary request has expired")
-    if record.verification_status not in {"REGISTERED", "TEMP_VERIFIED"}: raise HTTPException(status_code=403, detail="Identity verification is required")
-    get_simulation_service().simulate_action(record.junction_id, "request_priority", record.ambulance_id, record.approach)
-    record.status, record.updated_at = "ACTIVE", datetime.now(timezone.utc); await db.flush()
-    return EmergencyRequestResponse.model_validate(record)
+    raise HTTPException(status_code=409, detail="Requests are authorized automatically after backend validation; management supervises exceptions.")
