@@ -67,3 +67,9 @@ backend/**/__pycache__/
 uploads/
 
 uvicorn_*.txt
+
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.bak

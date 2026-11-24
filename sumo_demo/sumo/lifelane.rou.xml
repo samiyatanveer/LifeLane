@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    <!-- ── Vehicle types ───────────────────────────────────────────────── -->
+    <!-- Ambulance: emergency class, bluelight device, faster but safe -->
+    <vType id="ambulance"
+           vClass="emergency"
+           accel="2.5" decel="4.5" sigma="0.05" length="6"
+           minGap="2.5" maxSpeed="16.0"
+           color="1,1,1" guiShape="emergency"
+           emergencyDecel="9.0">
+        <param key="has.bluelight.device" value="true"/>
+    </vType>
+
+    <!-- Normal cars: calm driving, obey signals, yield to emergency -->
+    <vType id="car"
+           accel="1.6" decel="4.5" sigma="0.4" length="4.5"
+           minGap="2.5" maxSpeed="11.1"
+           color="0.4,0.6,0.9" guiShape="passenger"
+           impatience="0"
+           jmIgnoreKeepClearTime="0"/>
+
+    <vType id="car_red"
+           accel="1.6" decel="4.5" sigma="0.4" length="4.5"
+           minGap="2.5" maxSpeed="11.1"
+           color="0.9,0.3,0.3" guiShape="passenger"
+           impatience="0"
+           jmIgnoreKeepClearTime="0"/>
+
+    <vType id="bus"
+           accel="1.0" decel="4.0" sigma="0.2" length="12"
+           minGap="3.0" maxSpeed="9.0"
+           color="0.9,0.7,0.1" guiShape="bus"
+           impatience="0"/>
+
+    <!-- ── Routes ──────────────────────────────────────────────────────── -->
+    <route id="r_ambulance"   edges="e_start_J1 e_J1_J2 e_J2_hosp"/>
+    <route id="r_cross_NS1"   edges="e_north_J1 e_J1_J4"/>
+    <route id="r_cross_NS2"   edges="e_south_J3 e_J3_J2"/>
+    <route id="r_cross_EW"    edges="e_J2_J1"/>
+    <route id="r_grid_J4J3"   edges="e_J4_J3"/>
+    <route id="r_through"     edges="e_north_J1 e_J1_J2 e_J2_hosp"/>
+
+    <!-- ── AMBULANCE: departs at t=8s ─────────────────────────────────── -->
+    <vehicle id="ambulance_1" type="ambulance" route="r_ambulance"
+             depart="8" departSpeed="8.0"/>
+
+    <!-- ── Background civilian traffic (reduced flow to prevent queue spillback) -->
+    <!-- period increased to give signal cycles time to clear queues cleanly -->
+    <flow id="f_ns1"  type="car"     route="r_cross_NS1"  begin="0"  end="400" period="20"/>
+    <flow id="f_ns2"  type="car_red" route="r_cross_NS2"  begin="2"  end="400" period="22"/>
+    <flow id="f_ew"   type="car"     route="r_cross_EW"   begin="4"  end="400" period="18"/>
+    <flow id="f_grid" type="bus"     route="r_grid_J4J3"  begin="0"  end="400" period="30"/>
+    <flow id="f_thru" type="car"     route="r_through"    begin="6"  end="400" period="25"/>
+
+</routes>
